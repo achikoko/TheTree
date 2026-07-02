@@ -1,4 +1,4 @@
-package dev.thetree;
+package io.github.achikoko.thetree;
 
 import com.intellij.ide.projectView.TreeStructureProvider;
 import com.intellij.ide.projectView.ViewSettings;
@@ -7,26 +7,17 @@ import com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode;
 import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 import com.intellij.ide.util.treeView.AbstractTreeNode;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
-import dev.thetree.config.NodeConfig;
-import dev.thetree.config.TheTreeConfig;
-import dev.thetree.config.TheTreeConfigService;
-import dev.thetree.nodes.CompactedFolderNode;
-import dev.thetree.nodes.ModuleLibrariesNode;
-import dev.thetree.nodes.OrderedDirectoryNode;
-import dev.thetree.nodes.OrderedFileNode;
-import dev.thetree.nodes.UncompactedFolderNode;
-import dev.thetree.settings.TheTreeConfigState;
+import io.github.achikoko.thetree.config.NodeConfig;
+import io.github.achikoko.thetree.config.TheTreeConfig;
+import io.github.achikoko.thetree.config.TheTreeConfigService;
+import io.github.achikoko.thetree.nodes.*;
+import io.github.achikoko.thetree.settings.TheTreeConfigState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * The single {@link TreeStructureProvider} that implements all of The Tree's behavior:
@@ -176,8 +167,20 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
             if (cfg != null && cfg.isHidden()) {
                 continue; // drop hidden node
             }
-            int weight = cfg != null ? cfg.weightOrDefault() : 0;
-            out.add(applyWeight(node, weight));
+            Integer weight = cfg != null ? cfg.weightOrNull() : null;
+            
+            if(weight != null){
+                out.add(applyWeight(node, weight));
+            }else if (node instanceof CompactedFolderNode) {
+                out.add(node);
+            }else if(node instanceof PsiFileNode){
+                out.add(new UnorderedFileNode((PsiFileNode)node));
+            }else if(node instanceof PsiDirectoryNode){
+                out.add(new UnorderedDirectoryNode((PsiDirectoryNode)node));
+            }else{
+                out.add(node);
+            }
+            
         }
         return out;
     }
@@ -272,7 +275,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
             return false; // hoisted to the top level
         }
         Scan s = scan(vf, project, declaredCompacted);
-        return !(s.hasRoot && !s.hasLeftover);
+        return s.hasRoot || s.hasLeftover;
     }
     
     private static final class Scan {

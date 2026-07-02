@@ -1,4 +1,4 @@
-package dev.thetree.nodes;
+package io.github.achikoko.thetree.nodes;
 
 /**
  * Shared ordering logic for The Tree's nodes.

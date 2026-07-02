@@ -2,8 +2,7 @@
 
 An IntelliJ-platform plugin that reshapes the **Project** tool window. It is a
 ground-up rework of [luzuojin/FolderCompact](https://github.com/luzuojin/FolderCompact),
-extended with a per-module configuration file, arbitrary ordering, hiding, and an
-"Uncompacted" grouping node — and made to run across IDEs rather than only IntelliJ IDEA.
+extended with a per-module configuration file, arbitrary ordering, and hiding — and made to run across IDEs rather than only IntelliJ IDEA.
 
 ## What it does
 
@@ -12,21 +11,15 @@ extended with a per-module configuration file, arbitrary ordering, hiding, and a
 - **Compacts declared folders.** Non-source folders you list in `.thetree.yaml` with
   `:compacted: true` (for example `src/main/protobuf`) are surfaced the same way, as a
   single top-level node.
-- **Groups the rest under "Uncompacted".** Folders and files that are neither a source
-  root nor a declared compacted folder are collected into a virtual **Uncompacted** node,
-  so the top level stays focused on what matters. (Toggle: *Group Uncompacted Folders*.)
-- **Orders arbitrarily by weight.** Every node has a `:weight` (default `0`). Lower
-  weights render **above** higher ones, and the ordering crosses the folder/file divide,
-  so a file at `:weight: -1` can sit above a folder at the default `0`. Nodes with equal
-  weight fall back to the usual folders-first, then-alphabetical order.
-- **Hides nodes.** `:hidden: true` removes a node from the tree.
+- **Orders arbitrarily by weight.** Every node has a `/weight`. Lower weights render **above** higher ones.
+  The order doesn't cross the folders-first if *Folders Always On Top* toggle is on.
+- **Hides nodes.** `/hidden: true` removes a node from the tree.
 - **Optionally shows module libraries.** A virtual **Libraries** node per module can be
   switched on. (Toggle: *Show Module Libraries*, off by default.)
 
-All behaviour is toggleable from the Project view's *Appearance* / options menu
+All behavior is toggleable from the Project view's *Appearance* / options menu
 (the same gear/⚙ menu that hosts "Compact Directories"):
-*Compact Source Folders*, *Group Uncompacted Folders*, *Use .thetree.yaml*,
-*Show Module Libraries*.
+*Compact Source Folders*, *Use .thetree.yaml*, *Show Module Libraries*.
 
 ## Cross-IDE compatibility
 
@@ -64,16 +57,11 @@ To try it in a sandbox IDE:
 ./gradlew runIde
 ```
 
-> **Note:** this project was assembled without a compile step in the authoring
-> environment (no access to the JetBrains SDK there). It is a complete, coherent source
-> project, but expect to run `./gradlew buildPlugin` locally and possibly make small
-> version-specific adjustments — see *Version notes* below.
-
 ## `.thetree.yaml`
 
 Place the file in a **module content root**. Its structure mirrors the folder tree.
 
-- A key that begins with `:` sets a **property** of the current node.
+- A key that begins with `/` sets a **property** of the current node.
 - Any other key names a **child** folder or file; its value is a nested mapping.
 - A key containing `/` is **syntactic sugar** for nested nodes — `src/main/protobuf:` is
   the same as `src: { main: { protobuf: { … } } }`. Properties apply to the deepest segment.
@@ -82,66 +70,58 @@ Place the file in a **module content root**. Its structure mirrors the folder tr
 
 ### Properties
 
-| Property     | Type      | Default | Meaning                                                                 |
-|--------------|-----------|---------|-------------------------------------------------------------------------|
-| `:compacted` | boolean   | `false` | Surface this folder at the top level as a single compacted node.        |
-| `:weight`    | integer   | `0`     | Ordering key. **Lower renders above higher**; crosses the folder/file divide. |
-| `:hidden`    | boolean   | `false` | Do not display this node.                                               |
+| Property     | Type      | Default       | Meaning                                                                 |
+|--------------|-----------|---------------|-------------------------------------------------------------------------|
+| `/compacted` | boolean   | `false`       | Surface this folder at the top level as a single compacted node.        |
+| `/weight`    | integer   | (IDE default) | Ordering key. **Lower renders above higher**; crosses the folder/file divide. |
+| `/hidden`    | boolean   | `false`       | Do not display this node.                                               |
 
-Unknown `:`-properties are ignored, so the format is forward-compatible.
+Unknown `/`-properties are ignored, so the format is forward-compatible.
 
 ### Example
 
 ```yaml
 # Treat a non-source folder as a compacted top-level node, pulled to the top.
 src/main/protobuf:
-  :compacted: true
-  :weight: -10
+  /compacted: true
+  /weight: -10
 
 # Another declared compacted folder, pushed below default-weight nodes.
 generated:
-  :compacted: true
-  :weight: 20
+  /compacted: true
+  /weight: 20
 
 # Hide a folder entirely.
 build:
-  :hidden: true
+  /hidden: true
 
 # Order individual files.
 README.md:
-  :weight: -100
+  /weight: -100
 CHANGELOG.md:
-  :weight: -99
+  /weight: -99
 
 # Deep nesting (weight applies to docs/internal only when that branch is shown).
 docs:
-  :weight: 5
+  /weight: 5
   internal:
-    :hidden: true
+    /hidden: true
 ```
 
 The file is re-read automatically when you save it; the project view refreshes.
 
 ## Ordering caveat (Sort by Type / Folders Always on Top)
 
-IntelliJ sorts project-view children with a comparator, and which comparator runs depends
-on the view's sort settings:
+The ordering doesn't matter whether **"Folders Always on Top"** is enabled or not because the plugin overrides
+`getTypeSortWeight()` to return `getWeight()` weight or the configured `/weight` if defined. This design decision,
+keeps the folders and files in different groups, and they are sorted based on their weights.
 
-- With **"Folders Always on Top"** enabled (the default), the platform uses a
-  type-sort-weight comparator where **higher** sorts earlier. The plugin overrides
-  `getTypeSortWeight()` so your configured `:weight` dominates.
-- With that option **off**, the platform uses `getWeight()` where **lower** sorts earlier.
-  The plugin overrides `getWeight()` too.
-
-If you additionally enable **"Sort by Type"**, the view groups by file type *first*; that
-grouping can appear to override `:weight`. If ordering ever looks inverted for your sort
-configuration, flip the sign of the weight term in
-`dev.thetree.nodes.Ordering#typeSortWeight`. All ordering math lives in that one class.
+As long as it is concerned, the IDE assigns a weight of `20` to folders and `30` to files.
 
 ## Extending: gitignore-style patterns (not yet enabled)
 
 Pattern matching (`*`, `*.ext`, `**`) is intentionally stubbed but architecturally ready.
-Matching goes through `dev.thetree.config.NodeMatcher`:
+Matching goes through `io.github.achikoko.thetree.config.NodeMatcher`:
 
 - `NodeMatcher.of(key)` currently returns a `Literal` matcher (exact segment match).
 - The interface already exposes `isDeep()`, `isLiteral()`, `matches(segment)`, and
@@ -155,7 +135,7 @@ in `NodeConfig#child`. No other layer needs to change.
 ## Project layout
 
 ```
-src/main/java/dev/thetree/
+src/main/java/io/github/achikoko/thetree/
   PathUtil.java                     path helpers + segments()
   TheTreeStructureProvider.java     the TreeStructureProvider (entry point)
   config/
@@ -170,7 +150,8 @@ src/main/java/dev/thetree/
     CompactedFolderNode.java        compacted folder (relative-path label)
     OrderedDirectoryNode.java       weight-carrying directory wrapper
     OrderedFileNode.java            weight-carrying file wrapper
-    UncompactedFolderNode.java      virtual "Uncompacted" node
+    UnorderedDirectoryNode.java     directory wrapper that overrides `getTypeSortWeight`
+    UnorderedFileNode.java          file wrapper that overrides `getTypeSortWeight`
     ModuleLibrariesNode.java        virtual "Libraries" node
   settings/
     TheTreeConfigState.java         persistent toggles
@@ -189,5 +170,4 @@ platform versions (`PsiDirectoryNode` with a `ViewSettings`/filter argument, `Ps
 ## Credits
 
 Derived from FolderCompact by luzuojin. The compaction and library-node concepts come from
-that project; the configuration file, ordering, hiding, Uncompacted grouping, and cross-IDE
-packaging are new.
+that project; the configuration file, ordering, hiding, and cross-IDE packaging are new.

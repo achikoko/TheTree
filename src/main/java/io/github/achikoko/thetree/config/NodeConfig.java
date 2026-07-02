@@ -1,4 +1,4 @@
-package dev.thetree.config;
+package io.github.achikoko.thetree.config;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -64,11 +64,12 @@ public final class NodeConfig {
         return Boolean.TRUE.equals(hidden);
     }
 
-    /** Weight for ordering; unset means the default of 0. */
-    public int weightOrDefault() {
-        return weight == null ? 0 : weight;
+    /** The explicit weight, or null if the YAML did not set one. */
+    @Nullable
+    public Integer weightOrNull() {
+        return weight;
     }
-
+    
     // ---- children ---------------------------------------------------------
 
     /**

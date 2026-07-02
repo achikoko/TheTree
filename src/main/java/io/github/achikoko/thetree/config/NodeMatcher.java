@@ -1,4 +1,4 @@
-package dev.thetree.config;
+package io.github.achikoko.thetree.config;
 
 /**
  * Matches a single path segment (a file or folder name) against a key from {@code .thetree.yaml}.

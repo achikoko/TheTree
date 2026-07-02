@@ -1,4 +1,4 @@
-package dev.thetree.settings;
+package io.github.achikoko.thetree.settings;
 
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;

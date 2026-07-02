@@ -1,5 +1,6 @@
-package dev.thetree.config;
+package io.github.achikoko.thetree.config;
 
+import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
@@ -37,6 +38,8 @@ import java.util.Map;
  * </pre>
  */
 public final class TheTreeConfigParser {
+    
+    private static final Logger LOG = Logger.getInstance(TheTreeConfigParser.class);
 
     private TheTreeConfigParser() {
     }
@@ -64,7 +67,7 @@ public final class TheTreeConfigParser {
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
             Object value = entry.getValue();
-            if (key.startsWith(":")) {
+            if (key.startsWith("/")) {
                 applyProperty(node, key, value);
             } else {
                 NodeConfig target = expand(node, key);
@@ -91,17 +94,18 @@ public final class TheTreeConfigParser {
 
     private static void applyProperty(NodeConfig node, String key, Object value) {
         switch (key) {
-            case ":compacted":
+            case "/compacted":
                 node.setCompacted(toBoolean(value));
                 break;
-            case ":weight":
+            case "/weight":
                 node.setWeight(toInteger(value));
                 break;
-            case ":hidden":
+            case "/hidden":
                 node.setHidden(toBoolean(value));
                 break;
             default:
                 // Unknown property: ignore (forward compatible).
+                LOG.warn("Provided key \"" + key + "\" starts with a '/' but does not exist.");
                 break;
         }
     }

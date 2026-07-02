@@ -1,4 +1,4 @@
-package dev.thetree.nodes;
+package io.github.achikoko.thetree.nodes;
 
 import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 
@@ -14,14 +14,15 @@ public final class OrderedFileNode extends PsiFileNode {
         super(origin.getProject(), origin.getValue(), origin.getSettings());
         this.weight = weight;
     }
-
+    
     @Override
     public int getWeight() {
-        return Ordering.weight(weight, false);
+        return weight;
     }
-
+    
     @Override
     public int getTypeSortWeight(boolean sortByType) {
-        return Ordering.typeSortWeight(weight, false);
+        return weight;
     }
+    
 }

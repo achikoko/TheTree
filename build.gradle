@@ -4,7 +4,7 @@ plugins {
     id 'org.jetbrains.intellij' version '1.17.4'
 }
 
-group 'dev.thetree'
+group 'io.github.achikoko.thetree'
 version '0.1.0'
 
 repositories {
@@ -45,7 +45,6 @@ patchPluginXml {
     changeNotes = """
     0.1.0: Initial release of The Tree.<br/>
       - Compacts source folders (e.g. src/main/java) as in FolderCompact.<br/>
-      - Groups non-source sibling folders (e.g. src/main/protobuf) under a virtual "Uncompacted" node.<br/>
       - Reads a per-module .thetree.yaml describing extra folders to compact, per-node weight ordering and hidden nodes.<br/>
       - Runs on IntelliJ IDEA, PyCharm, PhpStorm and other IntelliJ-platform IDEs.<br/>
     """

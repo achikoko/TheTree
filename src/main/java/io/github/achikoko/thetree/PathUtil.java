@@ -1,4 +1,4 @@
-package dev.thetree;
+package io.github.achikoko.thetree;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;

@@ -1,6 +1,6 @@
-package dev.thetree.config;
+package io.github.achikoko.thetree.config;
 
-import dev.thetree.PathUtil;
+import io.github.achikoko.thetree.PathUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

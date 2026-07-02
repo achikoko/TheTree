@@ -1,4 +1,4 @@
-package dev.thetree.config;
+package io.github.achikoko.thetree.config;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;

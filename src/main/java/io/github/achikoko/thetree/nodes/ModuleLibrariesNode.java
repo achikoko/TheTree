@@ -1,4 +1,4 @@
-package dev.thetree.nodes;
+package io.github.achikoko.thetree.nodes;
 
 import com.intellij.ide.projectView.PresentationData;
 import com.intellij.ide.projectView.ProjectViewNode;

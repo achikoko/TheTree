@@ -1,4 +1,4 @@
-package dev.thetree.settings;
+package io.github.achikoko.thetree.settings;
 
 import com.intellij.ide.projectView.ProjectView;
 import com.intellij.openapi.actionSystem.AnActionEvent;

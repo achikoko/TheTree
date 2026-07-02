@@ -16,29 +16,27 @@
 #                            with :weight -1 can sit above a folder with weight 0.
 #   :hidden     true|false   Do not display this node at all.
 
-# Treat a non-source folder as a compacted top-level node, and pull it to the top.
-#src/main/protobuf:
-#  :compacted: true
-#  :weight: -10
-#
 ## Another declared compacted folder, pushed below the default-weight nodes.
 #generated:
 #  :compacted: true
 #  :weight: 20
 #
+
 ## Hide a folder entirely.
-#build:
-#  :hidden: true
-#
+build:
+  /hidden: true
+.idea: { /hidden: true }
+.gradle: { /hidden: true }
+gradle: { /hidden: true }
+
+## Files
+gradlew: { /hidden: true }
+gradlew.bat: { /hidden: true }
+
 ## Order individual files. README floats to the very top; CHANGELOG sits just under.
 README.md:
-  :weight: -100
+  /weight: -100
 CHANGELOG.md:
-  :weight: -99
-
-## Nesting without the slash sugar: weight applies deep in the tree, and only takes
-## effect when this branch is present in the project view.
-#docs:
-#  :weight: 5
-#  internal:
-#    :hidden: true
+  /weight: -99
+.thetree.yaml:
+  /weight: 21
