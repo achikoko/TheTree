@@ -63,7 +63,17 @@ public final class NodeConfig {
     public boolean isHidden() {
         return Boolean.TRUE.equals(hidden);
     }
-
+    
+    public boolean hasExplicitlyShownChildren(){
+        for (NodeConfig child : literalChildren.values()) {
+            if(Boolean.FALSE.equals(child.hidden))
+                return true;
+            if(child.hasExplicitlyShownChildren())
+                return true;
+        }
+        return false;
+    }
+    
     /** The explicit weight, or null if the YAML did not set one. */
     @Nullable
     public Integer weightOrNull() {
