@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    // gradle-intellij-plugin 1.x. See https://github.com/JetBrains/gradle-intellij-plugin/
+    id 'org.jetbrains.intellij' version '1.17.4'
+}
+
+group 'dev.thetree'
+version '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // SnakeYAML is bundled INTO the plugin (ends up in the plugin's lib/ folder and is
+    // loaded by the plugin's own classloader). We deliberately do NOT rely on the
+    // bundled YAML plugin so the plugin stays usable in IDEs where it is absent.
+    implementation('org.yaml:snakeyaml:2.2')
+}
+
+java {
+    // 2022.2+ of the platform runs on JBR 17.
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// -----------------------------------------------------------------------------
+// IMPORTANT (cross-product compatibility):
+// We build against IntelliJ IDEA Community ('IC') purely because it is a
+// convenient, freely available distribution that ships the *platform* APIs we
+// use. The plugin itself depends ONLY on com.intellij.modules.platform (see
+// plugin.xml) and never touches Java-specific ('com.intellij.java') APIs, so
+// the produced artifact installs and runs in IntelliJ IDEA, PyCharm, PhpStorm,
+// WebStorm, GoLand, RubyMine, CLion, Rider, etc.
+// -----------------------------------------------------------------------------
+intellij {
+    version = '2022.2'
+    type = 'IC'
+    plugins = []                 // no bundled-plugin dependencies -> not tied to any single IDE
+    updateSinceUntilBuild = false
+}
+
+patchPluginXml {
+    sinceBuild = '222'
+    changeNotes = """
+    0.1.0: Initial release of The Tree.<br/>
+      - Compacts source folders (e.g. src/main/java) as in FolderCompact.<br/>
+      - Groups non-source sibling folders (e.g. src/main/protobuf) under a virtual "Uncompacted" node.<br/>
+      - Reads a per-module .thetree.yaml describing extra folders to compact, per-node weight ordering and hidden nodes.<br/>
+      - Runs on IntelliJ IDEA, PyCharm, PhpStorm and other IntelliJ-platform IDEs.<br/>
+    """
+}
+
+// The verifier / runIde tasks are available via the gradle-intellij-plugin.

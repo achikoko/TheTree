@@ -1,0 +1,67 @@
+<idea-plugin>
+    <id>dev.thetree</id>
+    <name>The Tree</name>
+    <version>0.1.0</version>
+    <vendor>The Tree</vendor>
+
+    <description><![CDATA[
+    <b>The Tree</b> reshapes the project view.<br/>
+    <ul>
+      <li>Compacts source folders (e.g. <code>src/main/java</code>) into a single node.</li>
+      <li>Compacts additional non-source folders declared in a per-module-root
+          <code>.thetree.yaml</code> file.</li>
+      <li>Orders folders and files arbitrarily via a <code>:weight</code> property
+          (lower weights render above higher ones; the ordering crosses the
+          folder/file divide).</li>
+      <li>Hides nodes marked with <code>:hidden</code>.</li>
+      <li>Optionally shows a virtual <b>Libraries</b> node per module.</li>
+    </ul>
+    Works across IntelliJ-platform IDEs (IntelliJ IDEA, PyCharm, PhpStorm, and others)
+    because it depends only on the platform, not on any language plugin.
+    ]]></description>
+
+    <change-notes><![CDATA[
+    <b>0.1.0</b> — Initial release: source + declared-folder compaction, the
+    Uncompacted group, YAML-driven weight/hidden ordering, and cross-IDE support.
+    ]]></change-notes>
+
+    <!-- Build against 2022.2+ . Depending ONLY on the platform module (and NOT on
+         com.intellij.java) is what makes the plugin load in PyCharm, PhpStorm, etc.
+         See https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <idea-version since-build="222"/>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <treeStructureProvider implementation="dev.thetree.TheTreeStructureProvider" order="last"/>
+
+        <projectService serviceImplementation="dev.thetree.settings.TheTreeConfigState"/>
+        <projectService serviceImplementation="dev.thetree.config.TheTreeConfigService"/>
+    </extensions>
+
+    <projectListeners>
+        <listener class="dev.thetree.config.TheTreeVfsListener"
+                  topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+    </projectListeners>
+
+    <actions>
+        <action id="dev.thetree.TheTreeActions.CompactSourceFolders"
+                class="dev.thetree.settings.TheTreeActions$CompactSourceFolders"
+                text="Compact Source Folders" description="Compact source folders such as src/main/java into a single node">
+            <add-to-group group-id="ProjectView.ToolWindow.Appearance.Actions"
+                          relative-to-action="ProjectView.CompactDirectories" anchor="after"/>
+        </action>
+        <action id="dev.thetree.TheTreeActions.UseConfigFile"
+                class="dev.thetree.settings.TheTreeActions$UseConfigFile"
+                text="Use .thetree.yaml" description="Apply compaction, weight and hidden rules from .thetree.yaml">
+            <add-to-group group-id="ProjectView.ToolWindow.Appearance.Actions"
+                          relative-to-action="dev.thetree.TheTreeActions.CompactSourceFolders" anchor="after"/>
+        </action>
+        <action id="dev.thetree.TheTreeActions.ShowModuleLibraries"
+                class="dev.thetree.settings.TheTreeActions$ShowModuleLibraries"
+                text="Show Module Libraries" description="Show a virtual Libraries node for each module">
+            <add-to-group group-id="ProjectView.ToolWindow.Appearance.Actions"
+                          relative-to-action="ProjectView.ShowLibraryContents" anchor="after"/>
+        </action>
+    </actions>
+</idea-plugin>
