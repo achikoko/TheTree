@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 /**
- * The single {@link TreeStructureProvider} that implements all of The Tree's behavior:
+ * The single {@link TreeStructureProvider} that implements all The Tree's behavior:
  *
  * <ol>
  *   <li><b>Compaction</b> of source roots and folders declared {@code :compacted: true} in
@@ -42,10 +42,9 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
     public Collection<AbstractTreeNode<?>> modify(@NotNull AbstractTreeNode<?> parent,
                                                   @NotNull Collection<AbstractTreeNode<?>> children,
                                                   ViewSettings settings) {
-        if (!(parent instanceof PsiDirectoryNode)) {
+        if (!(parent instanceof PsiDirectoryNode dirParent)) {
             return children;
         }
-        PsiDirectoryNode dirParent = (PsiDirectoryNode) parent;
         Project project = parent.getProject();
         if (project == null) {
             return children;
@@ -81,14 +80,12 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
             Set<String> declaredCompacted = declaredCompactedAbsolutePaths(config, contentRoot);
             // 1. Hoist every compaction root in the subtree to the top level.
             for (AbstractTreeNode<?> child : children) {
-                NodeConfig childCfg = config.root() != null ? config.root().child(nameFor(child, contentRoot.getPath())) : null;
-                findCompactionRoots(parent, child, declaredCompacted, project, topLevel, childCfg);
+                findCompactionRoots(parent, child, declaredCompacted, project, topLevel, config);
             }
             // 2. Keep the original children in their natural place, except those that are
             //    themselves compaction roots or whose subtree exists only to hold roots.
             for (AbstractTreeNode<?> child : children) {
-                NodeConfig childCfg = config.root() != null ? config.root().child(nameFor(child, contentRoot.getPath())) : null;
-                if (keepInNaturalTree(child, project, declaredCompacted, childCfg)) {
+                if (keepInNaturalTree(child, project, declaredCompacted, config, contentRoot)) {
                     topLevel.add(child);
                 }
             }
@@ -97,7 +94,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         }
         
         List<AbstractTreeNode<?>> result = decorate
-            ? decorateChildren(new ArrayList<>(topLevel), config.root(), contentRoot.getPath())
+            ? decorateChildren(new ArrayList<>(topLevel), config, contentRoot.getPath())
             : new ArrayList<>(topLevel);
         
         if (state.getShowModuleLibraries()) {
@@ -125,10 +122,8 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
                 : TheTreeConfig.EMPTY;
             Set<String> declaredCompacted = declaredCompactedAbsolutePaths(cfgForRoots, contentRoot);
             pruned = new ArrayList<>(children.size());
-            NodeConfig rootCfg = cfgForRoots.root();
             for(AbstractTreeNode<?> child: children){
-                @Nullable NodeConfig childCfg = rootCfg != null ? rootCfg.child(child.getName()) : null;
-                if(keepInNaturalTree(child, project, declaredCompacted, childCfg)){
+                if(keepInNaturalTree(child, project, declaredCompacted, cfgForRoots, contentRoot)){
                     pruned.add(child);
                 }
             }
@@ -152,13 +147,13 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         if (parentConfig == null) {
             return pruned;
         }
-        return decorateChildren(pruned, parentConfig, parentFile.getPath());
+        return decorateChildren(pruned, config, parentFile.getPath());
     }
 
     // ---- decoration (weight + hidden) ------------------------------------
 
     private List<AbstractTreeNode<?>> decorateChildren(List<AbstractTreeNode<?>> nodes,
-                                                       NodeConfig parentConfig,
+                                                       TheTreeConfig parentConfig,
                                                        String contextPath) {
         List<AbstractTreeNode<?>> out = new ArrayList<>(nodes.size());
         for (AbstractTreeNode<?> node : nodes) {
@@ -167,7 +162,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
                 out.add(node); // virtual/unknown node: leave as-is
                 continue;
             }
-            NodeConfig cfg = TheTreeConfig.resolve(parentConfig, segments);
+            NodeConfig cfg = parentConfig.resolve(segments);
             if (cfg != null && cfg.isHidden()) {
                 continue; // drop hidden node
             }
@@ -209,28 +204,6 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         }
         return null;
     }
-    
-    @Nullable
-    private String nameFor(AbstractTreeNode<?> node, String contextPath) {
-        if (node instanceof CompactedFolderNode) {
-            VirtualFile vf = ((CompactedFolderNode) node).getVirtualFile();
-            String rel = vf == null ? null : PathUtil.relativeIfUnder(vf.getPath(), contextPath);
-            if (rel == null || rel.isEmpty()) {
-                return vf == null ? null : vf.getName();
-            }
-            String[] split = rel.split("/");
-            return split.length > 0 ? split[split.length-1] : null;
-        }
-        if (node instanceof PsiDirectoryNode) {
-            VirtualFile vf = ((PsiDirectoryNode) node).getVirtualFile();
-            return vf == null ? null : vf.getName();
-        }
-        if (node instanceof PsiFileNode) {
-            VirtualFile vf = ((PsiFileNode) node).getVirtualFile();
-            return vf == null ? null : vf.getName();
-        }
-        return null;
-    }
 
     private AbstractTreeNode<?> applyWeight(AbstractTreeNode<?> node, int weight) {
         if (node instanceof CompactedFolderNode) {
@@ -267,7 +240,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
                                      Set<String> declaredCompacted,
                                      Project project,
                                      List<AbstractTreeNode<?>> out,
-                                     NodeConfig nodeCfg) {
+                                     TheTreeConfig config) {
         if (!(node instanceof PsiDirectoryNode)) {
             return;
         }
@@ -276,10 +249,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         if (vf == null) {
             return;
         }
-        if (ProjectRootsUtil.isModuleContentRoot(vf, project) && !vf.equals(root.getVirtualFile())) {
-            // A nested content root (submodule): handled separately by the platform. Stop here.
-            return;
-        }
+        @Nullable NodeConfig nodeCfg = config.resolve(PathUtil.segments(vf.getPath()));
         if(nodeCfg != null && nodeCfg.isHidden() && !nodeCfg.hasExplicitlyShownChildren()){
             return; // Found a hidden folder, don't care if it contains a source root
         }
@@ -287,14 +257,17 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
             out.add(new CompactedFolderNode(root, dirNode));
             return; // do not descend past a compaction root
         }
+        if (ProjectRootsUtil.isModuleContentRoot(vf, project) && !vf.equals(root.getVirtualFile())) {
+            // A nested content root (submodule): handled separately by the platform. Stop here.
+            return;
+        }
         for (AbstractTreeNode<?> child : node.getChildren()) {
-            NodeConfig childCfg = nodeCfg != null ? nodeCfg.child(vf.getName()) : null;
-            findCompactionRoots(root, child, declaredCompacted, project, out, childCfg);
+            findCompactionRoots(root, child, declaredCompacted, project, out, config);
         }
     }
     /** Whether a child stays in the natural (nested) tree. Compaction roots are shown once at the
      *  top level; a directory whose subtree holds only compaction roots collapses away. */
-    private boolean keepInNaturalTree(AbstractTreeNode<?> node, Project project, Set<String> declaredCompacted, NodeConfig nodeConfig) {
+    private boolean keepInNaturalTree(AbstractTreeNode<?> node, Project project, Set<String> declaredCompacted, TheTreeConfig config, VirtualFile contentRoot) {
         if (!(node instanceof PsiDirectoryNode)) {
             return true; // files stay in place
         }
@@ -305,7 +278,14 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         if (isCompactionRoot(vf, project, declaredCompacted)) {
             return false; // hoisted to the top level
         }
-        Scan s = scan(vf, project, declaredCompacted, nodeConfig);
+        NodeConfig childConfig = config.resolve(PathUtil.relativeIfUnder(vf.getPath(), contentRoot.getPath()));
+        if(childConfig != null && childConfig.isHidden()){
+            return false; // hidden
+        }
+        if(ProjectRootsUtil.isModuleContentRoot(vf, project)){
+            return true;
+        }
+        Scan s = scan(vf, project, declaredCompacted, config, contentRoot);
         return s.hasModule || !(s.hasRoot && !s.hasLeftover);
     }
     
@@ -317,7 +297,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
     
     /** Inspects a directory's subtree for compaction roots and "leftover" content (any file, an
      *  empty folder, or a folder that itself holds leftovers). */
-    private Scan scan(VirtualFile dir, Project project, Set<String> declaredCompacted, NodeConfig nodeConfig) {
+    private Scan scan(VirtualFile dir, Project project, Set<String> declaredCompacted, TheTreeConfig config, VirtualFile contentRoot) {
         Scan s = new Scan();
         VirtualFile[] kids = dir.getChildren();
         if (kids.length == 0) {
@@ -325,17 +305,17 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
             return s;
         }
         for (VirtualFile child : kids) {
-            NodeConfig childConfig = nodeConfig != null ? nodeConfig.child(child.getName()) : null;
+            NodeConfig childConfig = config.resolve(PathUtil.relativeIfUnder(child.getPath(), contentRoot.getPath()));
             if(childConfig != null && childConfig.isHidden()){
-                continue;
+//                continue;
             }else if (!child.isDirectory()) {
                 s.hasLeftover = true;
-            } else if(ProjectRootsUtil.isModuleContentRoot(child, project)){
-                s.hasModule = true;
             } else if (isCompactionRoot(child, project, declaredCompacted)) {
                 s.hasRoot = true;
+            } else if(ProjectRootsUtil.isModuleContentRoot(child, project)){
+                s.hasModule = true;
             } else {
-                Scan cs = scan(child, project, declaredCompacted, childConfig);
+                Scan cs = scan(child, project, declaredCompacted, config, contentRoot);
                 s.hasRoot |= cs.hasRoot;
                 s.hasLeftover |= cs.hasLeftover;
                 s.hasModule |= cs.hasModule;

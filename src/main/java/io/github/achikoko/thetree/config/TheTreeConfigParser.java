@@ -94,19 +94,12 @@ public final class TheTreeConfigParser {
 
     private static void applyProperty(NodeConfig node, String key, Object value) {
         switch (key) {
-            case "/compacted":
-                node.setCompacted(toBoolean(value));
-                break;
-            case "/weight":
-                node.setWeight(toInteger(value));
-                break;
-            case "/hidden":
-                node.setHidden(toBoolean(value));
-                break;
-            default:
+            case "/compacted" -> node.setCompacted(toBoolean(value));
+            case "/weight" -> node.setWeight(toInteger(value));
+            case "/hidden" -> node.setHidden(toBoolean(value));
+            default ->
                 // Unknown property: ignore (forward compatible).
                 LOG.warn("Provided key \"" + key + "\" starts with a '/' but does not exist.");
-                break;
         }
     }
 

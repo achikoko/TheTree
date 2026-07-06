@@ -34,11 +34,53 @@ public interface NodeMatcher {
     }
 
     static NodeMatcher of(String key) {
-        // For now every key is treated literally. When pattern support is enabled this factory
-        // is the single place that decides which matcher a key maps to.
+        if (key.equals("**")) {
+            return new Deep();
+        }
+        if (key.indexOf('*') >= 0 || key.indexOf('?') >= 0) {
+            return new Glob(key);
+        }
         return new Literal(key);
     }
-
+    
+    /** Single-segment glob: {@code *} = any run, {@code ?} = one char, e.g. {@code *.iml}. */
+    final class Glob implements NodeMatcher {
+        private final String raw;
+        private final java.util.regex.Pattern regex;
+        
+        Glob(String raw) {
+            this.raw = raw;
+            this.regex = java.util.regex.Pattern.compile(toRegex(raw));
+        }
+        
+        private static String toRegex(String glob) {
+            StringBuilder sb = new StringBuilder("^");
+            for (int i = 0; i < glob.length(); i++) {
+                char c = glob.charAt(i);
+                switch (c) {
+                    case '*' -> sb.append("[^/]*");
+                    case '?' -> sb.append("[^/]");
+                    case '.', '\\', '+', '(', ')', '[', ']', '{', '}', '^', '$', '|' ->
+                            sb.append('\\').append(c);
+                    default -> sb.append(c);
+                }
+            }
+            return sb.append('$').toString();
+        }
+        
+        @Override public boolean matches(String segment) { return regex.matcher(segment).matches(); }
+        @Override public boolean isLiteral() { return false; }
+        @Override public String pattern() { return raw; }
+    }
+    
+    /** Deep wildcard {@code **}: matches zero or more nested segments. */
+    final class Deep implements NodeMatcher {
+        @Override public boolean matches(String segment) { return true; }
+        @Override public boolean isLiteral() { return false; }
+        @Override public boolean isDeep() { return true; }
+        @Override public String pattern() { return "**"; }
+    }
+    
     /** Exact, case-sensitive segment match. */
     final class Literal implements NodeMatcher {
         private final String value;

@@ -51,7 +51,7 @@ public final class CompactedFolderNode extends PsiDirectoryNode {
         super.updateImpl(data);
         String relative = relativePath();
         if (relative != null && !relative.isEmpty()) {
-            data.setPresentableText(relative);
+            data.setPresentableText(relative); // keeps speed-search / accessibility correct
         }
     }
     

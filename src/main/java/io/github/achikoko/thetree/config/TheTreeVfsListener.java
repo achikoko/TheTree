@@ -1,45 +1,108 @@
 package io.github.achikoko.thetree.config;
 
 import com.intellij.ide.projectView.ProjectView;
+import com.intellij.ide.projectView.impl.AbstractProjectViewPane;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
+import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFileCopyEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Listens for VFS changes and, whenever a {@code .thetree.yaml} is created, edited, moved or
- * deleted, invalidates the cache and refreshes the project view so the tree reflects the change
- * without a manual refresh. Registered per-project via {@code <projectListeners>} in plugin.xml.
+ * Refreshes the project view when something changes that the platform won't propagate to the
+ * content root on its own: a {@code .thetree.yaml} edit, or any structural change (folder/file
+ * created, deleted, moved, renamed) that can flip a compacted branch's collapse decision.
  */
 public final class TheTreeVfsListener implements BulkFileListener {
-
+    
     private final Project project;
-
+    private final AtomicBoolean refreshScheduled = new AtomicBoolean(false);
+    
     public TheTreeVfsListener(Project project) {
         this.project = project;
     }
-
+    
     @Override
     public void after(@NotNull List<? extends VFileEvent> events) {
-        boolean touched = false;
-        for (VFileEvent event : events) {
-            String path = event.getPath();
-            if (path != null && path.endsWith("/" + TheTreeConfigService.CONFIG_FILE_NAME)
-                    || path != null && path.equals(TheTreeConfigService.CONFIG_FILE_NAME)) {
-                touched = true;
-                break;
-            }
-        }
-        if (!touched || project.isDisposed()) {
+        if (project.isDisposed()) {
             return;
         }
-        TheTreeConfigService.getInstance(project).invalidate();
+        String basePath = project.getBasePath();
+        boolean configTouched = false;
+        boolean structureTouched = false;
+        
+        for (VFileEvent event : events) {
+            String path = event.getPath();
+//            if (path == null) {
+//                continue;
+//            }
+            if (isConfigFile(path)) {
+                configTouched = true;
+                structureTouched = true;
+            } else if (isStructural(event) && underProject(path, basePath)) {
+                structureTouched = true;
+            }
+        }
+        
+        if (configTouched) {
+            TheTreeConfigService.getInstance(project).invalidate();
+        }
+        if (structureTouched) {
+            scheduleRefresh();
+        }
+    }
+    
+    private static boolean isConfigFile(@NotNull String path) {
+        return path.endsWith("/" + TheTreeConfigService.configFileName())
+            || path.equals(TheTreeConfigService.configFileName());
+    }
+    
+    /** A change that alters tree shape — not a plain content edit. */
+    private static boolean isStructural(@NotNull VFileEvent event) {
+        if (event instanceof VFileContentChangeEvent) {
+            return false;
+        }
+        if (event instanceof VFileCreateEvent
+            || event instanceof VFileDeleteEvent
+            || event instanceof VFileMoveEvent
+            || event instanceof VFileCopyEvent) {
+            return true;
+        }
+        if (event instanceof VFilePropertyChangeEvent) {
+            return VirtualFile.PROP_NAME.equals(((VFilePropertyChangeEvent) event).getPropertyName());
+        }
+        return false;
+    }
+    
+    private static boolean underProject(@NotNull String path, String basePath) {
+        return basePath == null || path.equals(basePath) || path.startsWith(basePath + "/");
+    }
+    
+    private void scheduleRefresh() {
+        if (!refreshScheduled.compareAndSet(false, true)) {
+            return; // one already queued — coalesce bursts (checkout, build output, etc.)
+        }
         ApplicationManager.getApplication().invokeLater(() -> {
-            if (!project.isDisposed()) {
-                ProjectView.getInstance(project).refresh();
+            refreshScheduled.set(false);
+            if (project.isDisposed()) {
+                return;
+            }
+            ProjectView view = ProjectView.getInstance(project);
+            AbstractProjectViewPane pane = view.getCurrentProjectViewPane();
+            if (pane != null) {
+                pane.updateFromRoot(true); // full rebuild from root, keep expansion state
+            } else {
+                view.refresh();
             }
         });
     }

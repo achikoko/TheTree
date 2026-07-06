@@ -32,6 +32,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <treeStructureProvider implementation="io.github.achikoko.thetree.TheTreeStructureProvider" order="last"/>
+        <projectViewNodeDecorator implementation="io.github.achikoko.thetree.nodes.CompactedFolderDecorator"/>
 
         <projectService serviceImplementation="io.github.achikoko.thetree.settings.TheTreeConfigState"/>
         <projectService serviceImplementation="io.github.achikoko.thetree.config.TheTreeConfigService"/>

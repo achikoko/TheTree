@@ -81,7 +81,36 @@ public final class NodeConfig {
     }
     
     // ---- children ---------------------------------------------------------
-
+    
+    /** Exact literal child only (no pattern fallback). */
+    @Nullable
+    public NodeConfig literalChild(String segment) {
+        return literalChildren.get(segment);
+    }
+    
+    /** Pattern children in precedence order: more specific globs first, {@code **} last. */
+    public List<NodeConfig> orderedPatternChildren() {
+        List<NodeConfig> list = new ArrayList<>(patternChildren);
+        list.sort((a, b) -> {
+            boolean da = a.matcher().isDeep(), db = b.matcher().isDeep();
+            if (da != db) return da ? 1 : -1;                 // ** always last
+            int sa = specificity(a.matcher().pattern());
+            int sb = specificity(b.matcher().pattern());
+            if (sa != sb) return sb - sa;                     // more literal chars = more specific
+            return a.matcher().pattern().compareTo(b.matcher().pattern());
+        });
+        return list;
+    }
+    
+    private static int specificity(String p) {
+        int n = 0;
+        for (int i = 0; i < p.length(); i++) {
+            char c = p.charAt(i);
+            if (c != '*' && c != '?') n++;
+        }
+        return n;
+    }
+    
     /**
      * Returns the existing child for {@code key}, creating it if necessary. Used while parsing;
      * this is what makes slash-expanded keys and repeated keys merge into the same node.
@@ -103,7 +132,7 @@ public final class NodeConfig {
 
     /**
      * Resolves a child for an actual filesystem segment (used at render time). Literal children
-     * are checked first; pattern children are consulted afterwards (none today).
+     * are checked first; pattern children are consulted afterward (none today).
      *
      * @return the matching child config, or {@code null} if this branch is not described.
      */

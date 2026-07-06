@@ -4,7 +4,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -17,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class TheTreeConfigService {
 
-    public static final String CONFIG_FILE_NAME = ".thetree.yaml";
+    private static final String CONFIG_FILE_NAME = ".thetree.yaml";
 
     private static final Logger LOG = Logger.getInstance(TheTreeConfigService.class);
 
@@ -77,8 +76,7 @@ public final class TheTreeConfigService {
         }
     }
 
-    @Nullable
-    public static String configFileName() {
+    public static @NotNull String configFileName() {
         return CONFIG_FILE_NAME;
     }
 

@@ -33,26 +33,26 @@ public final class TheTreeConfig {
         return present;
     }
 
-    /**
-     * Resolves the config node for {@code relativePath} (relative to the module root),
-     * or {@code null} if that branch is not described by the config.
-     */
-    @Nullable
-    public NodeConfig resolve(String relativePath) {
-        return resolve(root, PathUtil.segments(relativePath));
-    }
-
-    @Nullable
-    public static NodeConfig resolve(@Nullable NodeConfig from, List<String> segments) {
-        NodeConfig current = from;
-        for (String segment : segments) {
-            if (current == null) {
-                return null;
-            }
-            current = current.child(segment);
-        }
-        return current;
-    }
+//    /**
+//     * Resolves the config node for {@code relativePath} (relative to the module root),
+//     * or {@code null} if that branch is not described by the config.
+//     */
+//    @Nullable
+//    public NodeConfig resolve(String relativePath) {
+//        return resolve(root, PathUtil.segments(relativePath));
+//    }
+//
+//    @Nullable
+//    public static NodeConfig resolve(@Nullable NodeConfig from, List<String> segments) {
+//        NodeConfig current = from;
+//        for (String segment : segments) {
+//            if (current == null) {
+//                return null;
+//            }
+//            current = current.child(segment);
+//        }
+//        return current;
+//    }
 
     /**
      * Collects the relative paths (as segment lists) of every node explicitly marked
@@ -75,4 +75,54 @@ public final class TheTreeConfig {
             path.remove(path.size() - 1);
         }
     }
+    
+    /** Resolve by an already-split path (relative to the module root). */
+    @Nullable
+    public NodeConfig resolve(List<String> segments) {
+        return match(root, segments, 0);
+    }
+    
+    @Nullable
+    public NodeConfig resolve(String relativePath) {
+        return match(root, PathUtil.segments(relativePath), 0);
+    }
+    
+    @Nullable
+    public static NodeConfig resolve(@Nullable NodeConfig from, List<String> segments) {
+        return match(from, segments, 0);
+    }
+    
+    @Nullable
+    private static NodeConfig match(@Nullable NodeConfig node, List<String> segments, int index) {
+        if (node == null) {
+            return null;
+        }
+        if (index == segments.size()) {
+            return node; // whole path consumed: this node describes it
+        }
+        String seg = segments.get(index);
+        
+        // 1. Exact literal wins over any pattern.
+        NodeConfig lit = node.literalChild(seg);
+        if (lit != null) {
+            NodeConfig r = match(lit, segments, index + 1);
+            if (r != null) return r;
+        }
+        
+        // 2. Patterns, most specific first, ** last.
+        for (NodeConfig cand : node.orderedPatternChildren()) {
+            if (cand.matcher().isDeep()) {
+                // ** consumes zero or more segments — try every split.
+                for (int k = 0; index + k <= segments.size(); k++) {
+                    NodeConfig r = match(cand, segments, index + k);
+                    if (r != null) return r;
+                }
+            } else if (cand.matcher().matches(seg)) {
+                NodeConfig r = match(cand, segments, index + 1);
+                if (r != null) return r;
+            }
+        }
+        return null;
+    }
+    
 }

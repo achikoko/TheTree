@@ -16,7 +16,7 @@ public final class PathUtil {
 
     private PathUtil() {
     }
-
+    
     /**
      * Returns {@code path} expressed relative to {@code root}, or {@code null} if {@code path}
      * is not located under {@code root}. Returns an empty string if they are equal.
