@@ -40,11 +40,38 @@ IDE-bundled YAML support, so `.thetree.yaml` parsing works identically everywher
 ## Building
 
 You need a JDK **17 or newer** and network access to the JetBrains/IntelliJ repositories
-(the Gradle IntelliJ plugin downloads the IDE SDK on first build).
+(the Gradle IntelliJ plugin downloads the IDE SDK on first build — expect a few minutes and
+a few hundred MB the first time).
 
 ```bash
-./gradlew buildPlugin
+./gradlew assemble        # or: ./gradlew buildPlugin — same artifact
 ```
+
+Either task writes the installable plugin to:
+
+```
+build/distributions/TheTree-<version>.zip
+```
+
+`<version>` comes from `version` in `build.gradle` (`0.1.2` at the time of writing). That zip
+**is** the plugin — do not unpack it, the IDE takes it as-is. Inside it is the usual layout:
+
+```
+TheTree/lib/instrumented-TheTree-<version>.jar   the plugin itself
+TheTree/lib/snakeyaml-2.2.jar                    bundled YAML parser
+TheTree/lib/searchableOptions-<version>.jar      generated settings-search index
+```
+
+The bare jar in `build/libs/` is **not** installable on its own: it has no SnakeYAML and no
+plugin directory layout. Always install the zip from `build/distributions/`.
+
+To wipe previous output before a release build:
+
+```bash
+./gradlew clean assemble
+```
+
+### Build troubleshooting
 
 The wrapper pins **Gradle 8.10.2**, which runs on Java 17–23 and is compatible with the
 `org.jetbrains.intellij` 1.x plugin used here. If you build from inside the IDE, make sure
@@ -53,10 +80,27 @@ Tools → Gradle). The IDE's bundled JBR is fine. Older Gradle versions cannot r
 modern JDK and fail with `Unsupported class file major version …` before compiling
 anything — that is a Gradle-vs-JVM mismatch, not a problem with the plugin code.
 
-The installable zip is written to `build/distributions/`. Install it via
-**Settings → Plugins → ⚙ → Install Plugin from Disk…**
+## Installing into an IDE
 
-To try it in a sandbox IDE:
+1. Open **Settings/Preferences → Plugins** (`Ctrl+Alt+S` / `⌘,`).
+2. Click the **⚙ gear** icon next to the search field → **Install Plugin from Disk…**
+3. Select `build/distributions/TheTree-<version>.zip`.
+4. Click **Restart IDE** when prompted. The plugin only takes effect after the restart.
+5. Check it landed: **Settings → Plugins → Installed** should list **The Tree**, and the
+   Project tool window's **⚙ → Appearance** menu should now offer *Compact Source Folders*,
+   *Use .thetree.yaml* and *Show Module Libraries*.
+
+The same zip installs in any IntelliJ-platform IDE (IDEA, PyCharm, PhpStorm, WebStorm, GoLand,
+CLion, RubyMine, Rider) on build **222** (2022.2) or newer.
+
+**Updating:** repeat the steps above with the new zip — installing over an existing version
+replaces it, no need to uninstall first. **Uninstalling:** Settings → Plugins → Installed →
+The Tree → ⚙ → Uninstall, then restart.
+
+### Trying it without installing
+
+`runIde` launches a throwaway sandbox IDE with the plugin already loaded, leaving your real IDE
+untouched:
 
 ```bash
 ./gradlew runIde
