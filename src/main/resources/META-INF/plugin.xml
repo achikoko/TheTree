@@ -31,8 +31,20 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <treeStructureProvider implementation="io.github.achikoko.thetree.TheTreeStructureProvider" order="last"/>
+        <!-- order: run after the Java plugin's ClassesTreeStructureProvider so that when it rebuilds
+             .java PsiFileNodes into class nodes, OUR provider still wraps the (rebuilt) node and the
+             weight override survives. `after <id>` is ignored in IDEs where that id is absent
+             (PyCharm, etc.). Maven's MavenTreeStructureProvider has no id, so pom files can still be
+             rebuilt after us — option B (TheTreeProjectViewPane) is the robust fix for that. -->
+        <treeStructureProvider implementation="io.github.achikoko.thetree.TheTreeStructureProvider"
+                               order="last, after ClassesTreeStructureProvider"/>
         <projectViewNodeDecorator implementation="io.github.achikoko.thetree.nodes.CompactedFolderDecorator"/>
+
+        <!-- EXPERIMENTAL (option B): a dedicated project-view pane that owns its sort comparator so
+             weight is applied by VirtualFile after the whole provider chain, immune to node
+             replacement and independent of sort mode. Adds a "The Tree" tab. Remove this line and
+             the io.github.achikoko.thetree.view package to discard. -->
+        <projectViewPane implementation="io.github.achikoko.thetree.view.TheTreeProjectViewPane"/>
 
         <projectService serviceImplementation="io.github.achikoko.thetree.settings.TheTreeConfigState"/>
         <projectService serviceImplementation="io.github.achikoko.thetree.config.TheTreeConfigService"/>

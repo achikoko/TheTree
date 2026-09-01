@@ -21,12 +21,16 @@ src/main: { /compacted: true }
 ## Hide a folder entirely.
 build:
   /hidden: true
+  distributions:
+    /compacted: true
+    /hidden: false
 .idea: { /hidden: true }
 .gradle: { /hidden: true }
 
 ## Gradle fields and folders
 '*gradle*': { /hidden: true }
 'gradle.properties': { /hidden: false }
+'build.gradle': { /hidden: false }
 
 ## Order individual files. README floats to the very top; CHANGELOG sits just under.
 README.md:
@@ -34,4 +38,7 @@ README.md:
 CHANGELOG.md:
   /weight: -99 # Just after README.md
 .thetree.yaml:
+  /weight: 21 # After common
+
+'**/file1*':
   /weight: 21 # After common files
