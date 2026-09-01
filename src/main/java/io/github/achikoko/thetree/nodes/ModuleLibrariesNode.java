@@ -40,15 +40,21 @@ import java.util.UUID;
  */
 public final class ModuleLibrariesNode extends ProjectViewNode<String> {
 
+    /** Big enough that the node sinks below every realistically configured {@code /weight}. */
     private static final int BOTTOM_WEIGHT = 6_000;
 
     private final Module module;
 
+    /** Builds the node for whichever module owns {@code moduleRoot}'s directory. */
     public ModuleLibrariesNode(PsiDirectoryNode moduleRoot, ViewSettings viewSettings) {
         this(ProjectRootManager.getInstance(moduleRoot.getProject()).getFileIndex()
                 .getModuleForFile(moduleRoot.getVirtualFile()), viewSettings);
     }
 
+    /**
+     * @param module the module whose dependencies are listed.
+     * @param viewSettings the project view settings the children inherit.
+     */
     public ModuleLibrariesNode(Module module, ViewSettings viewSettings) {
         super(module.getProject(), UUID.randomUUID().toString(), viewSettings);
         this.module = module;
@@ -91,6 +97,12 @@ public final class ModuleLibrariesNode extends ProjectViewNode<String> {
         return false;
     }
 
+    /**
+     * Builds the child nodes: one per named library, one per SDK, one per module dependency.
+     * Unnamed libraries are flattened into their class roots.
+     *
+     * @param onlyExternal when true, libraries whose roots all live inside the project are skipped.
+     */
     public static Collection<? extends AbstractTreeNode<?>> createModuleLibraries(Module module,
                                                                                   ViewSettings settings,
                                                                                   boolean onlyExternal) {
@@ -129,6 +141,7 @@ public final class ModuleLibrariesNode extends ProjectViewNode<String> {
         return children;
     }
 
+    /** @return true if any class root of the entry lies outside the project's content. */
     static boolean hasExternalEntries(ProjectFileIndex index, LibraryOrderEntry orderEntry) {
         VirtualFile[] files = orderEntry.getRootFiles(OrderRootType.CLASSES);
         for (VirtualFile file : files) {
@@ -139,6 +152,7 @@ public final class ModuleLibrariesNode extends ProjectViewNode<String> {
         return false;
     }
 
+    /** Adds one node per class root of an unnamed library directly to {@code children}. */
     public static void addLibraryChildren(final LibraryOrderEntry entry,
                                           final List<AbstractTreeNode<?>> children,
                                           Project project, ViewSettings settings) {
@@ -153,6 +167,10 @@ public final class ModuleLibrariesNode extends ProjectViewNode<String> {
         }
     }
 
+    /**
+     * A directory node for library content that is only equal to itself and refuses to represent
+     * project files, which keeps selection from jumping while library packages are expanded.
+     */
     public static class FixedPsiDirectoryNode extends PsiDirectoryNode {
         public FixedPsiDirectoryNode(Project project, PsiDirectory value, ViewSettings viewSettings) {
             super(project, value, viewSettings);
@@ -179,6 +197,7 @@ public final class ModuleLibrariesNode extends ProjectViewNode<String> {
             return wrappedNodes;
         }
 
+        /** Re-wraps a platform child so the "only equal to itself" behavior applies recursively. */
         private AbstractTreeNode<?> wrapNode(AbstractTreeNode<?> node) {
             if (node instanceof PsiDirectoryNode) {
                 return new FixedPsiDirectoryNode(node.getProject(),
@@ -235,6 +254,7 @@ public final class ModuleLibrariesNode extends ProjectViewNode<String> {
         }
     }
 
+    /** A leaf node standing for a module-to-module dependency; never expands. */
     public static class ModuleDependenceNode extends AbstractModuleNode {
         protected ModuleDependenceNode(Project project, @NotNull Module module, ViewSettings viewSettings) {
             super(project, module, viewSettings);

@@ -32,6 +32,7 @@ public final class PathUtil {
         return path.charAt(0) != '/' ? null : path.substring(1);
     }
 
+    /** @return true if {@code path} equals {@code parent} or lives underneath it. */
     public static boolean isParent(String parent, String path) {
         if (equals(parent, path)) {
             return true;
@@ -40,10 +41,12 @@ public final class PathUtil {
         return CASE_SENSITIVE ? path.startsWith(parent) : StringUtil.startsWithIgnoreCase(path, parent);
     }
 
+    /** Path equality, respecting whether the running filesystem is case sensitive. */
     public static boolean equals(String p1, String p2) {
         return CASE_SENSITIVE ? p1.equals(p2) : p1.equalsIgnoreCase(p2);
     }
 
+    /** Ensures a non-empty path ends with a single {@code /} so prefix tests are segment-safe. */
     private static String appendSlash(String parent) {
         if (parent.isEmpty()) {
             return parent;

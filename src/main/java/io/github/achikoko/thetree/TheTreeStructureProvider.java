@@ -23,13 +23,11 @@ import java.util.*;
  * The single {@link TreeStructureProvider} that implements all The Tree's behavior:
  *
  * <ol>
- *   <li><b>Compaction</b> of source roots and folders declared {@code :compacted: true} in
- *       {@code .thetree.yaml} into single "src/main/java"-style nodes.</li>
- *   <li><b>Uncompacted grouping</b>: non-source, non-declared sibling folders (e.g.
- *       {@code src/main/protobuf}) are collected under a virtual "Uncompacted" node instead of
- *       being surfaced at the module top level.</li>
- *   <li><b>Ordering</b> by per-node {@code :weight} (0 by default; lower renders higher).</li>
- *   <li><b>Hiding</b> of nodes marked {@code :hidden: true}.</li>
+ *   <li><b>Compaction</b> of source roots and folders declared {@code /compacted: true} in
+ *       {@code .thetree.yaml} into single "src/main/java"-style nodes, hoisted to the module's
+ *       top level; branches that existed only to hold such a root collapse away.</li>
+ *   <li><b>Ordering</b> by per-node {@code /weight} (0 by default; lower renders higher).</li>
+ *   <li><b>Hiding</b> of nodes marked {@code /hidden: true}.</li>
  * </ol>
  *
  * <p>The provider is invoked by the platform for every parent, so weight/hidden are applied at
@@ -37,6 +35,10 @@ import java.util.*;
  */
 public final class TheTreeStructureProvider implements TreeStructureProvider {
 
+    /**
+     * Platform entry point, called for every expanded directory. Module content roots go through
+     * the compaction pass; everything deeper only gets pruning plus weight/hidden decoration.
+     */
     @NotNull
     @Override
     public Collection<AbstractTreeNode<?>> modify(@NotNull AbstractTreeNode<?> parent,
@@ -62,6 +64,11 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
 
     // ---- module content root ---------------------------------------------
     
+    /**
+     * Rebuilds a module content root's children: hoist every compaction root in the subtree to the
+     * top level, keep the remaining natural children, then apply weight/hidden and optionally
+     * append the "Libraries" node.
+     */
     private Collection<AbstractTreeNode<?>> modifyContentRoot(PsiDirectoryNode parent,
                                                               VirtualFile contentRoot,
                                                               Collection<AbstractTreeNode<?>> children,
@@ -105,6 +112,10 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
 
     // ---- deeper levels ----------------------------------------------------
     
+    /**
+     * Handles any directory below a content root: prunes nodes already hoisted to the top level,
+     * then applies weight/hidden if the config describes this branch.
+     */
     private Collection<AbstractTreeNode<?>> decorateDeeper(PsiDirectoryNode parent,
                                                            VirtualFile parentFile,
                                                            Collection<AbstractTreeNode<?>> children,
@@ -152,6 +163,13 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
 
     // ---- decoration (weight + hidden) ------------------------------------
 
+    /**
+     * Drops hidden nodes and re-wraps the rest so ordering works: configured nodes become
+     * {@code Ordered*} wrappers, unconfigured ones become {@code Unordered*} wrappers that sit on
+     * the same sort scale. Nodes we cannot map to a path are passed through untouched.
+     *
+     * @param contextPath absolute path the child segments are resolved against.
+     */
     private List<AbstractTreeNode<?>> decorateChildren(List<AbstractTreeNode<?>> nodes,
                                                        TheTreeConfig parentConfig,
                                                        String contextPath) {
@@ -184,6 +202,12 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         return out;
     }
 
+    /**
+     * The config path segments for a node, relative to {@code contextPath}. Compacted nodes carry a
+     * multi-segment path; ordinary nodes are a single name.
+     *
+     * @return the segments, or {@code null} for virtual nodes that have no file behind them.
+     */
     @Nullable
     private List<String> segmentsFor(AbstractTreeNode<?> node, String contextPath) {
         if (node instanceof CompactedFolderNode) {
@@ -205,6 +229,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         return null;
     }
 
+    /** Attaches a configured weight to a node, wrapping it when the node class cannot hold one. */
     private AbstractTreeNode<?> applyWeight(AbstractTreeNode<?> node, int weight) {
         if (node instanceof CompactedFolderNode) {
             ((CompactedFolderNode) node).setWeight(weight);
@@ -221,6 +246,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
 
     // ---- compaction traversal --------------------------------------------
 
+    /** Resolves every {@code /compacted: true} entry into an absolute path for fast lookup. */
     private Set<String> declaredCompactedAbsolutePaths(TheTreeConfig config, VirtualFile contentRoot) {
         Set<String> out = new HashSet<>();
         String base = contentRoot.getPath();
@@ -230,11 +256,17 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         return out;
     }
 
+    /** A compaction root is either a module source root or a folder declared {@code /compacted}. */
     private boolean isCompactionRoot(VirtualFile file, Project project, Set<String> declaredCompacted) {
         return ProjectRootsUtil.isModuleSourceRoot(file, project) || declaredCompacted.contains(file.getPath());
     }
 
-    /** Collects compaction roots (source roots + declared-compacted folders) under {@code node}. */
+    /**
+     * Collects compaction roots (source roots + declared-compacted folders) under {@code node} into
+     * {@code out}, wrapped as {@link CompactedFolderNode}. The walk does not descend past a root it
+     * found, past a nested content root, or into a hidden folder — unless that hidden folder has an
+     * explicitly re-shown descendant.
+     */
     private void findCompactionRoots(PsiDirectoryNode root,
                                      AbstractTreeNode<?> node,
                                      Set<String> declaredCompacted,
@@ -265,8 +297,11 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
             findCompactionRoots(root, child, declaredCompacted, project, out, config);
         }
     }
-    /** Whether a child stays in the natural (nested) tree. Compaction roots are shown once at the
-     *  top level; a directory whose subtree holds only compaction roots collapses away. */
+    /**
+     * Whether a child stays in the natural (nested) tree. Compaction roots are shown once at the
+     * top level, hidden nodes are dropped, and a directory whose subtree holds nothing but
+     * compaction roots collapses away — unless it also contains a nested module.
+     */
     private boolean keepInNaturalTree(AbstractTreeNode<?> node, Project project, Set<String> declaredCompacted, TheTreeConfig config, VirtualFile contentRoot) {
         if (!(node instanceof PsiDirectoryNode)) {
             return true; // files stay in place
@@ -289,6 +324,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         return s.hasModule || !(s.hasRoot && !s.hasLeftover);
     }
     
+    /** What a subtree scan found: compaction roots, nested modules, and anything else worth showing. */
     private static final class Scan {
         boolean hasRoot;
         boolean hasModule;

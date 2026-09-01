@@ -28,10 +28,15 @@ public final class TheTreeVfsListener implements BulkFileListener {
     private final Project project;
     private final AtomicBoolean refreshScheduled = new AtomicBoolean(false);
     
+    /** @param project injected by the platform when the listener is registered. */
     public TheTreeVfsListener(Project project) {
         this.project = project;
     }
     
+    /**
+     * Inspects a batch of VFS events: a config touch invalidates the cache, and any structural
+     * change under the project schedules a single coalesced project-view rebuild.
+     */
     @Override
     public void after(@NotNull List<? extends VFileEvent> events) {
         if (project.isDisposed()) {
@@ -62,6 +67,7 @@ public final class TheTreeVfsListener implements BulkFileListener {
         }
     }
     
+    /** Whether the path points at a {@code .thetree.yaml}, wherever in the project it lives. */
     private static boolean isConfigFile(@NotNull String path) {
         return path.endsWith("/" + TheTreeConfigService.configFileName())
             || path.equals(TheTreeConfigService.configFileName());
@@ -84,10 +90,12 @@ public final class TheTreeVfsListener implements BulkFileListener {
         return false;
     }
     
+    /** Whether the path lies inside the project (an unknown base path is treated as "yes"). */
     private static boolean underProject(@NotNull String path, String basePath) {
         return basePath == null || path.equals(basePath) || path.startsWith(basePath + "/");
     }
     
+    /** Queues at most one full project-view rebuild on the EDT, coalescing event bursts. */
     private void scheduleRefresh() {
         if (!refreshScheduled.compareAndSet(false, true)) {
             return; // one already queued — coalesce bursts (checkout, build output, etc.)

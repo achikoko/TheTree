@@ -18,6 +18,10 @@ public final class TheTreeActions {
     private TheTreeActions() {
     }
 
+    /**
+     * Adapts a getter/setter pair on {@link TheTreeConfigState} into the {@code Option} the
+     * platform's {@link ToggleOptionAction} expects, refreshing the project view on change.
+     */
     static final class OptionSupplier implements Function<AnActionEvent, ToggleOptionAction.Option> {
         private final Function<TheTreeConfigState, Boolean> getter;
         private final BiConsumer<TheTreeConfigState, Boolean> setter;
@@ -53,6 +57,7 @@ public final class TheTreeActions {
         }
     }
 
+    /** Toggles compaction of source roots and declared-compacted folders. */
     public static class CompactSourceFolders extends ToggleOptionAction {
         public CompactSourceFolders() {
             super(new OptionSupplier(TheTreeConfigState::getCompactSourceFolder,
@@ -60,6 +65,7 @@ public final class TheTreeActions {
         }
     }
 
+    /** Toggles the virtual "Libraries" node shown per module. */
     public static class ShowModuleLibraries extends ToggleOptionAction {
         public ShowModuleLibraries() {
             super(new OptionSupplier(TheTreeConfigState::getShowModuleLibraries,
@@ -67,13 +73,7 @@ public final class TheTreeActions {
         }
     }
 
-    public static class GroupUncompacted extends ToggleOptionAction {
-        public GroupUncompacted() {
-            super(new OptionSupplier(TheTreeConfigState::getGroupUncompacted,
-                    TheTreeConfigState::setGroupUncompacted));
-        }
-    }
-
+    /** Toggles whether {@code .thetree.yaml} is honored at all. */
     public static class UseConfigFile extends ToggleOptionAction {
         public UseConfigFile() {
             super(new OptionSupplier(TheTreeConfigState::getUseConfigFile,

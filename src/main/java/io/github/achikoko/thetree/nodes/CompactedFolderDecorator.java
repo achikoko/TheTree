@@ -21,6 +21,11 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class CompactedFolderDecorator implements ProjectViewNodeDecorator {
 
+    /**
+     * Rewrites the label of a source root or module content root that sits directly under the
+     * project root to its project-relative path ({@code src/main/java}). Content roots keep their
+     * last segment bold, matching how the IDE renders module names. Anything else is left alone.
+     */
     @Override
     public void decorate(@NotNull ProjectViewNode<?> node, @NotNull PresentationData data) {
         Project project = node.getProject();

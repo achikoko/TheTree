@@ -12,11 +12,11 @@ import java.util.Map;
  *
  * <p>Rules:
  * <ul>
- *     <li>A mapping key starting with {@code :} sets a property on the current node
- *         ({@code :compacted}, {@code :weight}, {@code :hidden}). Unknown {@code :}-keys are
- *         ignored for forward compatibility.</li>
- *     <li>Any other key names a child folder/file. Its value (a nested mapping) describes that
- *         child.</li>
+ *     <li>A mapping key starting with {@code /} sets a property on the current node
+ *         ({@code /compacted}, {@code /weight}, {@code /hidden}). Unknown {@code /}-keys are
+ *         ignored (a warning is logged) for forward compatibility.</li>
+ *     <li>Any other key names a child folder/file, and may be a glob ({@code *.iml}) or the deep
+ *         wildcard ({@code **}). Its value (a nested mapping) describes that child.</li>
  *     <li>A key that contains {@code /} is syntactic sugar for the nested expansion, e.g.
  *         {@code src/main/protobuf: {...}} is equivalent to nested {@code src: {main: {protobuf: {...}}}}.
  *         The value/properties are applied to the deepest segment.</li>
@@ -27,14 +27,16 @@ import java.util.Map;
  * <p>Example:
  * <pre>
  * src/main/protobuf:
- *   :compacted: true
- *   :weight: -1
+ *   /compacted: true
+ *   /weight: -1
  * docs:
- *   :hidden: true
+ *   /hidden: true
  * generated:
- *   :weight: 5
+ *   /weight: 5
  *   keep.txt:
- *     :weight: -1
+ *     /weight: -1
+ * '*.iml':
+ *   /hidden: true
  * </pre>
  */
 public final class TheTreeConfigParser {
@@ -44,6 +46,11 @@ public final class TheTreeConfigParser {
     private TheTreeConfigParser() {
     }
 
+    /**
+     * Parses the given YAML text. Never throws: {@code null}, blank or malformed input yields a
+     * config reporting {@link TheTreeConfig#isPresent()} {@code == false}, so a broken file
+     * degrades to "no config" instead of breaking the project view.
+     */
     public static TheTreeConfig parse(@Nullable String yamlText) {
         NodeConfig root = new NodeConfig(NodeMatcher.of(""));
         if (yamlText == null || yamlText.isBlank()) {
@@ -63,6 +70,7 @@ public final class TheTreeConfigParser {
         return new TheTreeConfig(root, true);
     }
 
+    /** Applies one YAML mapping onto {@code node}: properties on itself, other keys as children. */
     private static void fill(NodeConfig node, Map<?, ?> map) {
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
@@ -92,6 +100,7 @@ public final class TheTreeConfigParser {
         return current;
     }
 
+    /** Applies a single {@code /}-prefixed property; unknown names are logged and ignored. */
     private static void applyProperty(NodeConfig node, String key, Object value) {
         switch (key) {
             case "/compacted" -> node.setCompacted(toBoolean(value));
@@ -103,6 +112,7 @@ public final class TheTreeConfigParser {
         }
     }
 
+    /** Lenient boolean coercion (true/false, yes/no, non-zero numbers); {@code null} if unusable. */
     @Nullable
     private static Boolean toBoolean(Object value) {
         if (value instanceof Boolean) {
@@ -119,6 +129,7 @@ public final class TheTreeConfigParser {
         return null;
     }
 
+    /** Lenient integer coercion (numbers and numeric strings); {@code null} if unusable. */
     @Nullable
     private static Integer toInteger(Object value) {
         if (value instanceof Number) {

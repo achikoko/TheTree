@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 )
 public final class TheTreeConfigState implements PersistentStateComponent<TheTreeConfigState> {
 
+    /** @return the project-level settings instance. */
     public static TheTreeConfigState getInstance(Project project) {
         return project.getService(TheTreeConfigState.class);
     }
@@ -25,8 +26,8 @@ public final class TheTreeConfigState implements PersistentStateComponent<TheTre
     private boolean compactSourceFolder = true;
     private boolean showModuleLibraries = false;
     private boolean useConfigFile = true;
-    private boolean groupUncompacted = true;
 
+    /** Whether source roots and declared-compacted folders are hoisted into single nodes. */
     public boolean getCompactSourceFolder() {
         return compactSourceFolder;
     }
@@ -35,6 +36,7 @@ public final class TheTreeConfigState implements PersistentStateComponent<TheTre
         this.compactSourceFolder = value;
     }
 
+    /** Whether a virtual "Libraries" node is appended to each module. */
     public boolean getShowModuleLibraries() {
         return showModuleLibraries;
     }
@@ -50,15 +52,6 @@ public final class TheTreeConfigState implements PersistentStateComponent<TheTre
 
     public void setUseConfigFile(boolean value) {
         this.useConfigFile = value;
-    }
-
-    /** Whether non-source sibling folders are grouped under a virtual "Uncompacted" node. */
-    public boolean getGroupUncompacted() {
-        return groupUncompacted;
-    }
-
-    public void setGroupUncompacted(boolean value) {
-        this.groupUncompacted = value;
     }
 
     @Nullable

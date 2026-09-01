@@ -25,8 +25,10 @@ import java.util.Comparator;
  */
 public final class TheTreeProjectViewPane extends ProjectViewPane {
 
+    /** The pane id registered with the platform and used to select this tab. */
     public static final String ID = "TheTreePane";
 
+    /** @param project injected by the platform when the pane extension is instantiated. */
     public TheTreeProjectViewPane(@NotNull Project project) {
         super(project);
     }
@@ -46,6 +48,7 @@ public final class TheTreeProjectViewPane extends ProjectViewPane {
         return 10; // tab order: after the standard Project pane (weight 0)
     }
 
+    /** Wraps the platform comparator so configured weight is applied before any other criterion. */
     @Override
     protected @NotNull Comparator<NodeDescriptor<?>> createComparator() {
         return new TheTreeNodeComparator(myProject, super.createComparator());

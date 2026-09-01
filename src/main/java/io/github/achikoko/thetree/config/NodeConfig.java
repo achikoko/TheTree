@@ -9,7 +9,7 @@ import java.util.Map;
 
 /**
  * One node of the tree described by {@code .thetree.yaml}. A node carries optional properties
- * ({@code :compacted}, {@code :weight}, {@code :hidden}) and a set of named children.
+ * ({@code /compacted}, {@code /weight}, {@code /hidden}) and a set of named children.
  *
  * <p>Property fields are nullable so we can distinguish "unset" (inherit default) from an
  * explicit value. Later-defined values overwrite earlier ones (see {@link #setCompacted} etc.),
@@ -23,47 +23,59 @@ public final class NodeConfig {
     private Integer weight;
     private Boolean hidden;
 
-    /** Fast path for literal keys (the only kind today). Insertion-ordered for stable output. */
+    /** Fast path for literal keys. Insertion-ordered so output is stable across parses. */
     private final Map<String, NodeConfig> literalChildren = new LinkedHashMap<>();
-    /** Non-literal (pattern) children, consulted after literals. Empty until patterns are enabled. */
+    /** Glob and {@code **} children, consulted only after an exact literal fails to match. */
     private final List<NodeConfig> patternChildren = new ArrayList<>();
 
+    /** @param matcher decides which filesystem segments this node describes. */
     public NodeConfig(NodeMatcher matcher) {
         this.matcher = matcher;
     }
 
+    /** @return the matcher this node was created with. */
     public NodeMatcher matcher() {
         return matcher;
     }
 
     // ---- properties -------------------------------------------------------
 
+    /** Sets {@code /compacted}; a {@code null} value leaves any previous setting untouched. */
     public void setCompacted(@Nullable Boolean value) {
         if (value != null) {
             this.compacted = value;
         }
     }
 
+    /** Sets {@code /weight}; a {@code null} value leaves any previous setting untouched. */
     public void setWeight(@Nullable Integer value) {
         if (value != null) {
             this.weight = value;
         }
     }
 
+    /** Sets {@code /hidden}; a {@code null} value leaves any previous setting untouched. */
     public void setHidden(@Nullable Boolean value) {
         if (value != null) {
             this.hidden = value;
         }
     }
 
+    /** @return true if {@code /compacted: true} was declared on this node. */
     public boolean isCompacted() {
         return Boolean.TRUE.equals(compacted);
     }
 
+    /** @return true if {@code /hidden: true} was declared on this node. */
     public boolean isHidden() {
         return Boolean.TRUE.equals(hidden);
     }
     
+    /**
+     * Whether anywhere below this node a descendant is explicitly un-hidden ({@code /hidden: false}).
+     * A hidden folder that carries such a descendant must still be traversed, otherwise the
+     * re-shown child would be lost with its parent.
+     */
     public boolean hasExplicitlyShownChildren(){
         for (NodeConfig child : literalChildren.values()) {
             if(Boolean.FALSE.equals(child.hidden))
@@ -88,7 +100,10 @@ public final class NodeConfig {
         return literalChildren.get(segment);
     }
     
-    /** Pattern children in precedence order: more specific globs first, {@code **} last. */
+    /**
+     * Pattern children in precedence order: more specific globs first (more literal characters wins,
+     * ties broken alphabetically for determinism), {@code **} always last.
+     */
     public List<NodeConfig> orderedPatternChildren() {
         List<NodeConfig> list = new ArrayList<>(patternChildren);
         list.sort((a, b) -> {
@@ -102,6 +117,7 @@ public final class NodeConfig {
         return list;
     }
     
+    /** How many characters of a pattern are literal — the ranking key for glob precedence. */
     private static int specificity(String p) {
         int n = 0;
         for (int i = 0; i < p.length(); i++) {
@@ -131,8 +147,9 @@ public final class NodeConfig {
     }
 
     /**
-     * Resolves a child for an actual filesystem segment (used at render time). Literal children
-     * are checked first; pattern children are consulted afterward (none today).
+     * Resolves a child for an actual filesystem segment, checking literals first and then patterns
+     * in declaration order. This is the shallow, single-segment lookup;
+     * {@code TheTreeConfig#resolve} is the full walk that also handles {@code **}.
      *
      * @return the matching child config, or {@code null} if this branch is not described.
      */
@@ -150,6 +167,7 @@ public final class NodeConfig {
         return null;
     }
 
+    /** @return the live, insertion-ordered map of literal children (used to walk the config). */
     public Map<String, NodeConfig> literalChildren() {
         return literalChildren;
     }

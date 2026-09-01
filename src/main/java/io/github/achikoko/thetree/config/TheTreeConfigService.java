@@ -27,6 +27,7 @@ public final class TheTreeConfigService {
         // Project is injected by the platform; kept for symmetry / future use.
     }
 
+    /** @return the project-level instance of this service. */
     public static TheTreeConfigService getInstance(Project project) {
         return project.getService(TheTreeConfigService.class);
     }
@@ -62,10 +63,12 @@ public final class TheTreeConfigService {
         return file != null && file.isValid() && !file.isDirectory();
     }
 
+    /** Drops every cached config; called when a {@code .thetree.yaml} changes on disk. */
     public void invalidate() {
         cache.clear();
     }
 
+    /** Reads and parses the file, degrading to {@link TheTreeConfig#EMPTY} on any I/O failure. */
     private static TheTreeConfig read(VirtualFile file) {
         try {
             String text = new String(file.contentsToByteArray(), file.getCharset());
@@ -76,10 +79,12 @@ public final class TheTreeConfigService {
         }
     }
 
+    /** @return the config file name The Tree looks for in every content root. */
     public static @NotNull String configFileName() {
         return CONFIG_FILE_NAME;
     }
 
+    /** One cache entry: the parsed config plus the file identity/stamp it was parsed from. */
     private static final class Cached {
         final String fileUrl;
         final long stamp;

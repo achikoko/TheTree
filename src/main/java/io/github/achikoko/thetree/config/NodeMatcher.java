@@ -3,16 +3,17 @@ package io.github.achikoko.thetree.config;
 /**
  * Matches a single path segment (a file or folder name) against a key from {@code .thetree.yaml}.
  *
- * <p>Today only {@link Literal} exact matching is implemented. The abstraction exists so that
- * gitignore-style patterns can be added later without touching the rest of the plugin:
+ * <p>Three flavours exist, all created through {@link #of(String)}:
  * <ul>
- *     <li>{@code *}      &rarr; any single segment</li>
- *     <li>{@code *.ext}  &rarr; any file segment ending in {@code .ext}</li>
- *     <li>{@code **}     &rarr; any number of nested segments (a "deep" matcher)</li>
+ *     <li>{@link Literal} &rarr; exact, case-sensitive segment match ({@code src})</li>
+ *     <li>{@link Glob}    &rarr; single-segment glob, where {@code *} matches any run of characters
+ *         and {@code ?} exactly one ({@code *.iml}, {@code file?.txt})</li>
+ *     <li>{@link Deep}    &rarr; the {@code **} wildcard, spanning zero or more nested segments</li>
  * </ul>
- * To add these, introduce new {@code NodeMatcher} implementations and teach
- * {@link NodeConfig#child(String)} / a resolver to consult non-literal matchers (and to
- * treat {@code **} as spanning multiple segments). Nothing else needs to change.
+ *
+ * <p>A matcher only decides whether one segment is accepted. Precedence between competing matchers
+ * (literal first, then globs by specificity, {@code **} last) lives in
+ * {@link NodeConfig#orderedPatternChildren()} and the walk in {@code TheTreeConfig#resolve}.
  */
 public interface NodeMatcher {
 
@@ -33,6 +34,13 @@ public interface NodeMatcher {
         return false;
     }
 
+    /**
+     * Creates the matcher a YAML key calls for: {@link Deep} for {@code **}, {@link Glob} when the
+     * key contains {@code *} or {@code ?}, and {@link Literal} otherwise.
+     *
+     * @param key one path segment as written in {@code .thetree.yaml} (never slash-separated;
+     *            slashed keys are expanded by the parser before reaching here).
+     */
     static NodeMatcher of(String key) {
         if (key.equals("**")) {
             return new Deep();
@@ -43,7 +51,10 @@ public interface NodeMatcher {
         return new Literal(key);
     }
     
-    /** Single-segment glob: {@code *} = any run, {@code ?} = one char, e.g. {@code *.iml}. */
+    /**
+     * Single-segment glob: {@code *} = any run of characters, {@code ?} = exactly one, e.g.
+     * {@code *.iml}. The glob never crosses a {@code /}; use {@link Deep} to span segments.
+     */
     final class Glob implements NodeMatcher {
         private final String raw;
         private final java.util.regex.Pattern regex;
@@ -53,6 +64,7 @@ public interface NodeMatcher {
             this.regex = java.util.regex.Pattern.compile(toRegex(raw));
         }
         
+        /** Translates the glob into an anchored regex, escaping every regex metacharacter. */
         private static String toRegex(String glob) {
             StringBuilder sb = new StringBuilder("^");
             for (int i = 0; i < glob.length(); i++) {

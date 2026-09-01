@@ -14,16 +14,22 @@ import java.util.Map;
  */
 public final class TheTreeConfig {
 
+    /** The "no config file here" instance: an empty root, {@link #isPresent()} {@code == false}. */
     public static final TheTreeConfig EMPTY = new TheTreeConfig(new NodeConfig(NodeMatcher.of("")), false);
 
     private final NodeConfig root;
     private final boolean present;
 
+    /**
+     * @param root    the parsed root node (children are content-root-relative top-level entries).
+     * @param present whether an actual {@code .thetree.yaml} was read to produce this config.
+     */
     public TheTreeConfig(NodeConfig root, boolean present) {
         this.root = root;
         this.present = present;
     }
 
+    /** @return the root node, whose children are the content root's top-level entries. */
     public NodeConfig root() {
         return root;
     }
@@ -56,7 +62,10 @@ public final class TheTreeConfig {
 
     /**
      * Collects the relative paths (as segment lists) of every node explicitly marked
-     * {@code :compacted: true}. Used to treat user-declared folders like source roots.
+     * {@code /compacted: true}. Used to treat user-declared folders like source roots.
+     *
+     * <p>Only literal children are walked: a compaction root has to name a concrete folder, so
+     * glob and {@code **} keys are not expanded here.
      */
     @NotNull
     public List<List<String>> declaredCompactedPaths() {
@@ -65,6 +74,7 @@ public final class TheTreeConfig {
         return out;
     }
 
+    /** Depth-first walk over literal children, recording the path of each compacted node. */
     private static void collectCompacted(NodeConfig node, List<String> path, List<List<String>> out) {
         for (Map.Entry<String, NodeConfig> e : node.literalChildren().entrySet()) {
             path.add(e.getKey());
@@ -82,16 +92,26 @@ public final class TheTreeConfig {
         return match(root, segments, 0);
     }
     
+    /**
+     * Resolves the config node describing {@code relativePath} (relative to the content root),
+     * or {@code null} if no literal or pattern branch covers it.
+     */
     @Nullable
     public NodeConfig resolve(String relativePath) {
         return match(root, PathUtil.segments(relativePath), 0);
     }
     
+    /** Same walk as {@link #resolve(List)}, but starting from an arbitrary node. */
     @Nullable
     public static NodeConfig resolve(@Nullable NodeConfig from, List<String> segments) {
         return match(from, segments, 0);
     }
     
+    /**
+     * Backtracking match of {@code segments[index..]} against the config subtree at {@code node}:
+     * exact literal first, then patterns most-specific-first, with {@code **} trying every possible
+     * number of consumed segments last.
+     */
     @Nullable
     private static NodeConfig match(@Nullable NodeConfig node, List<String> segments, int index) {
         if (node == null) {
