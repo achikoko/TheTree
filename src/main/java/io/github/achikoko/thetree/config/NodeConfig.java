@@ -86,6 +86,12 @@ public final class NodeConfig {
         return false;
     }
     
+    /** The explicit {@code /hidden}, or null if the YAML did not set one. */
+    @Nullable
+    public Boolean hiddenOrNull() {
+        return hidden;
+    }
+
     /** The explicit weight, or null if the YAML did not set one. */
     @Nullable
     public Integer weightOrNull() {

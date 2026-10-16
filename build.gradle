@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'io.github.achikoko.thetree'
-version '0.1.2'
+version '0.1.3'
 
 repositories {
     mavenCentral()
@@ -43,6 +43,18 @@ intellij {
 patchPluginXml {
     sinceBuild = '222'
     changeNotes = """
+    0.1.3:<br/>
+      - The same key may be repeated in .thetree.yaml; every occurrence is applied in order, so a block can be commented out without touching the others.<br/>
+      - "." path segments are ignored ("./src/main" is the same as "src/main").<br/>
+      - Hiding a folder now also hides the modules and source roots nested in it, unless re-shown with /hidden: false.<br/>
+    0.1.2:<br/>
+      - Fixed folders that are both compacted and hidden.<br/>
+      - Weights survive nodes rebuilt by other providers (Java class nodes).<br/>
+      - Experimental "The Tree" project-view tab that applies weights in every sort mode.<br/>
+    0.1.1:<br/>
+      - Pattern matching in .thetree.yaml keys with ?, * and **.<br/>
+      - Fixed hiding/showing the wrong folders.<br/>
+      - Compacted folders are decorated, and creating or deleting them refreshes the tree.<br/>
     0.1.0: Initial release of The Tree.<br/>
       - Compacts source folders (e.g. src/main/java) as in FolderCompact.<br/>
       - Reads a per-module .thetree.yaml describing extra folders to compact, per-node weight ordering and hidden nodes.<br/>

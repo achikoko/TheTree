@@ -116,7 +116,13 @@ Place the file in a **module content root**. Its structure mirrors the folder tr
 - A key containing `/` is **syntactic sugar** for nested nodes — `src/main/protobuf:` is
   the same as `src: { main: { protobuf: { … } } }`. Properties apply to the deepest segment.
 - If the same node is described more than once, **later properties win**, and children
-  merge recursively.
+  merge recursively. This holds even for the very same key repeated, so you can split a
+  node's settings into blocks and comment one out without touching the others:
+  ```yaml
+  src/main: { /compacted: true }
+  # src/main: { /hidden: true }
+  ```
+- `.` segments are ignored: `./src/main` is the same as `src/main`.
 
 ### Properties
 

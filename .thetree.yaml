@@ -6,7 +6,8 @@
 #   * A key containing '/' is syntactic sugar for nested nodes; the properties
 #     apply to the deepest segment. So "src/main/protobuf:" below is the same as
 #     writing src: { main: { protobuf: { ... } } }.
-#   * If the same node is described twice, later properties win (children merge).
+#   * If the same node is described twice (even with the very same key), later
+#     properties win (children merge). "." segments are ignored.
 #
 # Recognised properties:
 #   /compacted  true|false   Surface this folder at the top level as a single

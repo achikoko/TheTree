@@ -264,8 +264,8 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
     /**
      * Collects compaction roots (source roots + declared-compacted folders) under {@code node} into
      * {@code out}, wrapped as {@link CompactedFolderNode}. The walk does not descend past a root it
-     * found, past a nested content root, or into a hidden folder — unless that hidden folder has an
-     * explicitly re-shown descendant.
+     * found, past a nested content root, or into a hidden folder (hidden itself or through an
+     * ancestor) — unless that hidden folder has an explicitly re-shown descendant.
      */
     private void findCompactionRoots(PsiDirectoryNode root,
                                      AbstractTreeNode<?> node,
@@ -281,11 +281,17 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         if (vf == null) {
             return;
         }
-        @Nullable NodeConfig nodeCfg = config.resolve(PathUtil.segments(vf.getPath()));
-        if(nodeCfg != null && nodeCfg.isHidden() && !nodeCfg.hasExplicitlyShownChildren()){
-            return; // Found a hidden folder, don't care if it contains a source root
-        }
-        if (isCompactionRoot(vf, project, declaredCompacted)) {
+        List<String> segments = PathUtil.segments(
+            PathUtil.relativeIfUnder(vf.getPath(), root.getVirtualFile().getPath()));
+        boolean compactionRoot = isCompactionRoot(vf, project, declaredCompacted);
+        if (config.isHiddenInherited(segments)) {
+            // Hidden (itself or via an ancestor): nothing below surfaces, modules included,
+            // unless a descendant is explicitly re-shown and we must walk down to reach it.
+            NodeConfig nodeCfg = config.resolve(segments);
+            if (compactionRoot || nodeCfg == null || !nodeCfg.hasExplicitlyShownChildren()) {
+                return;
+            }
+        } else if (compactionRoot) {
             out.add(new CompactedFolderNode(root, dirNode));
             return; // do not descend past a compaction root
         }

@@ -3,9 +3,12 @@ package io.github.achikoko.thetree.config;
 import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.nodes.MappingNode;
+import org.yaml.snakeyaml.nodes.Node;
+import org.yaml.snakeyaml.nodes.NodeTuple;
+import org.yaml.snakeyaml.nodes.ScalarNode;
 
-import java.util.List;
-import java.util.Map;
+import java.io.StringReader;
 
 /**
  * Parses {@code .thetree.yaml} text into a {@link NodeConfig} tree.
@@ -21,7 +24,9 @@ import java.util.Map;
  *         {@code src/main/protobuf: {...}} is equivalent to nested {@code src: {main: {protobuf: {...}}}}.
  *         The value/properties are applied to the deepest segment.</li>
  *     <li>When the same node is described more than once, later values overwrite earlier ones
- *         (children are merged recursively).</li>
+ *         (children are merged recursively). This includes repeating the very same key, so a
+ *         block can be commented out without touching other blocks describing that node.</li>
+ *     <li>{@code .} segments are ignored, so {@code ./src/main} is the same as {@code src/main}.</li>
  * </ul>
  *
  * <p>Example:
@@ -56,31 +61,38 @@ public final class TheTreeConfigParser {
         if (yamlText == null || yamlText.isBlank()) {
             return new TheTreeConfig(root, false);
         }
-        Object loaded;
+        Node loaded;
         try {
+            // Composed (not constructed) so repeated keys survive: a Map would keep only the last.
             // new Yaml() is not thread-safe for reuse; create one per parse.
-            loaded = new Yaml().load(yamlText);
+            loaded = new Yaml().compose(new StringReader(yamlText));
         } catch (RuntimeException e) {
             // Malformed YAML: behave as if there were no config rather than breaking the tree.
             return new TheTreeConfig(root, false);
         }
-        if (loaded instanceof Map) {
-            fill(root, (Map<?, ?>) loaded);
+        if (loaded instanceof MappingNode mapping) {
+            fill(root, mapping);
         }
         return new TheTreeConfig(root, true);
     }
 
-    /** Applies one YAML mapping onto {@code node}: properties on itself, other keys as children. */
-    private static void fill(NodeConfig node, Map<?, ?> map) {
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            String key = String.valueOf(entry.getKey());
-            Object value = entry.getValue();
+    /**
+     * Applies one YAML mapping onto {@code node}, in document order: properties on itself, other
+     * keys as children. Repeated keys are all applied, the later ones on top.
+     */
+    private static void fill(NodeConfig node, MappingNode map) {
+        for (NodeTuple entry : map.getValue()) {
+            if (!(entry.getKeyNode() instanceof ScalarNode keyNode)) {
+                continue;
+            }
+            String key = keyNode.getValue();
+            Node value = entry.getValueNode();
             if (key.startsWith("/")) {
-                applyProperty(node, key, value);
+                applyProperty(node, key, value instanceof ScalarNode scalar ? scalar.getValue() : null);
             } else {
                 NodeConfig target = expand(node, key);
-                if (value instanceof Map) {
-                    fill(target, (Map<?, ?>) value);
+                if (value instanceof MappingNode mapping) {
+                    fill(target, mapping);
                 }
                 // A null value (bare "name:") simply declares the node with defaults.
                 // Scalars are ignored: a folder/file entry is expected to be a mapping.
@@ -92,7 +104,7 @@ public final class TheTreeConfigParser {
     private static NodeConfig expand(NodeConfig node, String key) {
         NodeConfig current = node;
         for (String segment : key.split("/")) {
-            if (segment.isEmpty()) {
+            if (segment.isEmpty() || segment.equals(".")) {
                 continue;
             }
             current = current.childForParsing(segment);
@@ -141,9 +153,6 @@ public final class TheTreeConfigParser {
             } catch (NumberFormatException ignored) {
                 return null;
             }
-        }
-        if (value instanceof List) {
-            return null;
         }
         return null;
     }

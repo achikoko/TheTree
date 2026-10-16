@@ -101,6 +101,21 @@ public final class TheTreeConfig {
         return match(root, PathUtil.segments(relativePath), 0);
     }
     
+    /**
+     * Whether the node at {@code segments} is hidden, either by its own {@code /hidden} or by the
+     * nearest ancestor that sets one. A {@code /hidden: false} closer to the node re-shows it.
+     */
+    public boolean isHiddenInherited(List<String> segments) {
+        for (int n = segments.size(); n > 0; n--) {
+            NodeConfig cfg = resolve(segments.subList(0, n));
+            Boolean hidden = cfg == null ? null : cfg.hiddenOrNull();
+            if (hidden != null) {
+                return hidden;
+            }
+        }
+        return false;
+    }
+
     /** Same walk as {@link #resolve(List)}, but starting from an arbitrary node. */
     @Nullable
     public static NodeConfig resolve(@Nullable NodeConfig from, List<String> segments) {
