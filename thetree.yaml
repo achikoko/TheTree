@@ -1,0 +1,52 @@
+# thetree.yaml — place this file in a module content root.
+#
+# Structure mirrors the folder tree you see in the project view.
+#   * A key beginning with '/' sets a PROPERTY of the current node.
+#   * Any other key names a CHILD folder or file.
+#   * A key containing '/' is syntactic sugar for nested nodes; the properties
+#     apply to the deepest segment. So "src/main/protobuf:" below is the same as
+#     writing src: { main: { protobuf: { ... } } }.
+#   * If the same node is described twice (even with the very same key), later
+#     properties win (children merge). "." segments are ignored.
+#
+# Recognised properties:
+#   /compact    true|false   Surface this folder at the top level as a single
+#                            compacted node (like a source root).
+#   /order      <integer>    Ordering key, default 20 (folders) / 30 (files).
+#                            LOWER renders ABOVE higher. Ordering crosses the
+#                            folder/file divide, so a file with /order 10 can
+#                            sit above a folder.
+#   /hide       true|false   Do not display this node (nor anything below it).
+#   /rename     <string> | [ <string> | {attrs: <style>, text: <string>}, ... ]
+#                            Show the node under another label. Styles: R, RB,
+#                            RI, E, G, GB, GI, GSM (Regular/Error/Grayed, Bold,
+#                            Italic, SMall).
+#   The 0.1 names /compacted, /weight and /hidden still work as aliases.
+
+src/main: { /compact: true }
+
+## Hide a folder entirely.
+build:
+  /hide: true
+  distributions:
+    /compact: true
+    /hide: false
+.idea: { /hide: true }
+.gradle: { /hide: true }
+
+## Gradle fields and folders
+'*gradle*': { /hide: true }
+'gradle.properties': { /hide: false }
+'build.gradle': { /hide: false }
+
+## Order individual files. README floats to the very top; CHANGELOG sits just under.
+README.md:
+  /order: -100 # Before all files
+  /rename: [ {attrs: RB, text: README}, {attrs: GI, text: " start here"} ]
+CHANGELOG.md:
+  /order: -99 # Just after README.md
+thetree.yaml:
+  /order: 21 # After common
+
+'**/file1*':
+  /order: 21 # After common files

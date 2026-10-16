@@ -9,9 +9,10 @@
     <ul>
       <li>Compacts source folders (e.g. <code>src/main/java</code>) into a single node.</li>
       <li>Compacts additional non-source folders declared in a per-module-root
-          <code>.thetree.yaml</code> file.</li>
-      <li>Orders folders and files arbitrarily via a <code>/weight</code> property.</li>
-      <li>Hides nodes marked with <code>/hidden</code>.</li>
+          <code>thetree.yaml</code> file.</li>
+      <li>Orders folders and files arbitrarily via an <code>/order</code> property.</li>
+      <li>Hides nodes marked with <code>/hide</code>.</li>
+      <li>Renames nodes, optionally with styled fragments, via <code>/rename</code>.</li>
       <li>Optionally shows a virtual <b>Libraries</b> node per module.</li>
     </ul>
     Works across IntelliJ-platform IDEs (IntelliJ IDEA, PyCharm, PhpStorm, and others)
@@ -38,7 +39,7 @@
              rebuilt after us — option B (TheTreeProjectViewPane) is the robust fix for that. -->
         <treeStructureProvider implementation="io.github.achikoko.thetree.TheTreeStructureProvider"
                                order="last, after ClassesTreeStructureProvider"/>
-        <projectViewNodeDecorator implementation="io.github.achikoko.thetree.nodes.CompactedFolderDecorator"/>
+        <projectViewNodeDecorator implementation="io.github.achikoko.thetree.nodes.TheTreeNodeDecorator"/>
 
         <!-- EXPERIMENTAL (option B): a dedicated project-view pane that owns its sort comparator so
              weight is applied by VirtualFile after the whole provider chain, immune to node
@@ -64,7 +65,7 @@
         </action>
         <action id="dev.thetree.TheTreeActions.UseConfigFile"
                 class="io.github.achikoko.thetree.settings.TheTreeActions$UseConfigFile"
-                text="Use '.thetree.yaml'." description="Apply compaction, weight and hidden rules from .thetree.yaml">
+                text="Use 'thetree.yaml'" description="Apply compaction, weight and hidden rules from thetree.yaml">
             <add-to-group group-id="ProjectView.ToolWindow.Appearance.Actions"
                           relative-to-action="dev.thetree.TheTreeActions.CompactSourceFolders" anchor="after"/>
         </action>

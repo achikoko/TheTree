@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'io.github.achikoko.thetree'
-version '0.1.3'
+version '0.2.0'
 
 repositories {
     mavenCentral()
@@ -43,6 +43,10 @@ intellij {
 patchPluginXml {
     sinceBuild = '222'
     changeNotes = """
+    0.2.0:<br/>
+      - Properties renamed to actions: /compact, /order and /hide. The old /compacted, /weight and /hidden still work as aliases but are discouraged.<br/>
+      - New /rename action: a plain string, or a list of strings and {attrs, text} objects to style each piece (R, RB, RI, E, G, GB, GI, GSM).<br/>
+      - The config file is now thetree.yaml. The dotted .thetree.yaml still works but is discouraged; when both exist, thetree.yaml wins.<br/>
     0.1.3:<br/>
       - The same key may be repeated in .thetree.yaml; every occurrence is applied in order, so a block can be commented out without touching the others.<br/>
       - "." path segments are ignored ("./src/main" is the same as "src/main").<br/>

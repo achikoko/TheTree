@@ -2,6 +2,12 @@
 
 ---
 
+## [0.2.0] - 2026-10-16
+### Feat
+- Action names `/compact`, `/order` and `/hide`; `/compacted`, `/weight` and `/hidden` remain as discouraged aliases.
+- `/rename` action: a plain string, or a list of strings and `{attrs, text}` objects (`R`, `RB`, `RI`, `E`, `G`, `GB`, `GI`, `GSM`).
+- The config file is now `thetree.yaml`; the dotted `.thetree.yaml` remains as a discouraged fallback.
+
 ## [0.1.3] - 2026-10-16
 ### Feat
 - The same key may be repeated in `.thetree.yaml`; every occurrence is applied in order.

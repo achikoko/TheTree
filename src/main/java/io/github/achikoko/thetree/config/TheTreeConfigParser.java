@@ -7,17 +7,22 @@ import org.yaml.snakeyaml.nodes.MappingNode;
 import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeTuple;
 import org.yaml.snakeyaml.nodes.ScalarNode;
+import org.yaml.snakeyaml.nodes.SequenceNode;
+import org.yaml.snakeyaml.nodes.Tag;
 
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Parses {@code .thetree.yaml} text into a {@link NodeConfig} tree.
+ * Parses {@code thetree.yaml} text into a {@link NodeConfig} tree.
  *
  * <p>Rules:
  * <ul>
  *     <li>A mapping key starting with {@code /} sets a property on the current node
- *         ({@code /compacted}, {@code /weight}, {@code /hidden}). Unknown {@code /}-keys are
- *         ignored (a warning is logged) for forward compatibility.</li>
+ *         ({@code /compact}, {@code /order}, {@code /hide}, {@code /rename}). The older
+ *         {@code /compacted}, {@code /weight} and {@code /hidden} are still accepted as aliases.
+ *         Unknown {@code /}-keys are ignored (a warning is logged) for forward compatibility.</li>
  *     <li>Any other key names a child folder/file, and may be a glob ({@code *.iml}) or the deep
  *         wildcard ({@code **}). Its value (a nested mapping) describes that child.</li>
  *     <li>A key that contains {@code /} is syntactic sugar for the nested expansion, e.g.
@@ -32,16 +37,17 @@ import java.io.StringReader;
  * <p>Example:
  * <pre>
  * src/main/protobuf:
- *   /compacted: true
- *   /weight: -1
+ *   /compact: true
+ *   /order: -1
+ *   /rename: [{attrs: RB, text: proto}, {attrs: G, text: " (generated)"}]
  * docs:
- *   /hidden: true
+ *   /hide: true
  * generated:
- *   /weight: 5
+ *   /order: 5
  *   keep.txt:
- *     /weight: -1
+ *     /order: -1
  * '*.iml':
- *   /hidden: true
+ *   /hide: true
  * </pre>
  */
 public final class TheTreeConfigParser {
@@ -88,7 +94,7 @@ public final class TheTreeConfigParser {
             String key = keyNode.getValue();
             Node value = entry.getValueNode();
             if (key.startsWith("/")) {
-                applyProperty(node, key, value instanceof ScalarNode scalar ? scalar.getValue() : null);
+                applyProperty(node, key, value);
             } else {
                 NodeConfig target = expand(node, key);
                 if (value instanceof MappingNode mapping) {
@@ -112,16 +118,82 @@ public final class TheTreeConfigParser {
         return current;
     }
 
-    /** Applies a single {@code /}-prefixed property; unknown names are logged and ignored. */
-    private static void applyProperty(NodeConfig node, String key, Object value) {
+    /**
+     * Applies a single {@code /}-prefixed property; unknown names are logged and ignored. The
+     * past-tense names ({@code /compacted}, {@code /weight}, {@code /hidden}) are kept as aliases.
+     */
+    private static void applyProperty(NodeConfig node, String key, Node value) {
         switch (key) {
-            case "/compacted" -> node.setCompacted(toBoolean(value));
-            case "/weight" -> node.setWeight(toInteger(value));
-            case "/hidden" -> node.setHidden(toBoolean(value));
+            case "/compact", "/compacted" -> node.setCompacted(toBoolean(scalarOf(value)));
+            case "/order", "/weight" -> node.setWeight(toInteger(scalarOf(value)));
+            case "/hide", "/hidden" -> node.setHidden(toBoolean(scalarOf(value)));
+            case "/rename" -> node.setRename(toFragments(value));
             default ->
                 // Unknown property: ignore (forward compatible).
                 LOG.warn("Provided key \"" + key + "\" starts with a '/' but does not exist.");
         }
+    }
+
+    /** The text of a non-null scalar, or {@code null} for a null, mapping or sequence value. */
+    @Nullable
+    private static String scalarOf(Node value) {
+        return value instanceof ScalarNode scalar && !Tag.NULL.equals(scalar.getTag()) ? scalar.getValue() : null;
+    }
+
+    /**
+     * Reads a {@code /rename} value: a plain string (one regular fragment), or a sequence whose
+     * items are strings or {@code {attrs: <TextStyle>, text: <string>}} mappings.
+     *
+     * @return the fragments, or {@code null} if the value describes no text at all.
+     */
+    @Nullable
+    private static List<NameFragment> toFragments(Node value) {
+        String plain = scalarOf(value);
+        if (plain != null) {
+            return List.of(new NameFragment(plain, TextStyle.R));
+        }
+        if (!(value instanceof SequenceNode sequence)) {
+            return null;
+        }
+        List<NameFragment> out = new ArrayList<>();
+        for (Node item : sequence.getValue()) {
+            String text = scalarOf(item);
+            if (text != null) {
+                out.add(new NameFragment(text, TextStyle.R));
+            } else if (item instanceof MappingNode mapping) {
+                NameFragment fragment = toFragment(mapping);
+                if (fragment != null) {
+                    out.add(fragment);
+                }
+            }
+        }
+        return out.isEmpty() ? null : out;
+    }
+
+    /** Reads one {@code {attrs, text}} fragment; an unknown {@code attrs} falls back to regular. */
+    @Nullable
+    private static NameFragment toFragment(MappingNode mapping) {
+        String text = null;
+        String attrs = null;
+        for (NodeTuple entry : mapping.getValue()) {
+            String key = scalarOf(entry.getKeyNode());
+            if ("text".equals(key)) {
+                text = scalarOf(entry.getValueNode());
+            } else if ("attrs".equals(key)) {
+                attrs = scalarOf(entry.getValueNode());
+            }
+        }
+        if (text == null) {
+            return null;
+        }
+        TextStyle style = TextStyle.of(attrs);
+        if (style == null) {
+            if (attrs != null) {
+                LOG.warn("Unknown /rename attrs \"" + attrs + "\"; using R.");
+            }
+            style = TextStyle.R;
+        }
+        return new NameFragment(text, style);
     }
 
     /** Lenient boolean coercion (true/false, yes/no, non-zero numbers); {@code null} if unusable. */

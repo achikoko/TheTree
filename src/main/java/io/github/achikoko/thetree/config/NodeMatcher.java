@@ -1,7 +1,7 @@
 package io.github.achikoko.thetree.config;
 
 /**
- * Matches a single path segment (a file or folder name) against a key from {@code .thetree.yaml}.
+ * Matches a single path segment (a file or folder name) against a key from {@code thetree.yaml}.
  *
  * <p>Three flavours exist, all created through {@link #of(String)}:
  * <ul>
@@ -38,7 +38,7 @@ public interface NodeMatcher {
      * Creates the matcher a YAML key calls for: {@link Deep} for {@code **}, {@link Glob} when the
      * key contains {@code *} or {@code ?}, and {@link Literal} otherwise.
      *
-     * @param key one path segment as written in {@code .thetree.yaml} (never slash-separated;
+     * @param key one path segment as written in {@code thetree.yaml} (never slash-separated;
      *            slashed keys are expanded by the parser before reaching here).
      */
     static NodeMatcher of(String key) {

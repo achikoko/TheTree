@@ -45,7 +45,7 @@ public final class TheTreeConfigState implements PersistentStateComponent<TheTre
         this.showModuleLibraries = value;
     }
 
-    /** Whether {@code .thetree.yaml} is honored (declared-compacted folders, weights, hidden). */
+    /** Whether {@code thetree.yaml} is honored (declared-compacted folders, weights, hidden). */
     public boolean getUseConfigFile() {
         return useConfigFile;
     }

@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Refreshes the project view when something changes that the platform won't propagate to the
- * content root on its own: a {@code .thetree.yaml} edit, or any structural change (folder/file
+ * content root on its own: a {@code thetree.yaml} edit, or any structural change (folder/file
  * created, deleted, moved, renamed) that can flip a compacted branch's collapse decision.
  */
 public final class TheTreeVfsListener implements BulkFileListener {
@@ -67,10 +67,9 @@ public final class TheTreeVfsListener implements BulkFileListener {
         }
     }
     
-    /** Whether the path points at a {@code .thetree.yaml}, wherever in the project it lives. */
+    /** Whether the path points at a config file (any accepted name), wherever in the project it lives. */
     private static boolean isConfigFile(@NotNull String path) {
-        return path.endsWith("/" + TheTreeConfigService.configFileName())
-            || path.equals(TheTreeConfigService.configFileName());
+        return TheTreeConfigService.isConfigFileName(path.substring(path.lastIndexOf('/') + 1));
     }
     
     /** A change that alters tree shape — not a plain content edit. */

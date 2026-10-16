@@ -28,7 +28,7 @@ public final class NodeWeights {
     }
 
     /**
-     * Resolves the {@code /weight} declared for {@code file} in the {@code .thetree.yaml} of its
+     * Resolves the {@code /weight} declared for {@code file} in the {@code thetree.yaml} of its
      * content root.
      *
      * @return the configured weight, or the platform default for the node's kind

@@ -73,7 +73,7 @@ public final class TheTreeActions {
         }
     }
 
-    /** Toggles whether {@code .thetree.yaml} is honored at all. */
+    /** Toggles whether {@code thetree.yaml} is honored at all. */
     public static class UseConfigFile extends ToggleOptionAction {
         public UseConfigFile() {
             super(new OptionSupplier(TheTreeConfigState::getUseConfigFile,

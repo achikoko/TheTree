@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The parsed {@code .thetree.yaml} for a single module content root. Wraps the root
+ * The parsed {@code thetree.yaml} for a single module content root. Wraps the root
  * {@link NodeConfig} and provides convenience resolution over "/"-separated relative paths.
  */
 public final class TheTreeConfig {
@@ -22,7 +22,7 @@ public final class TheTreeConfig {
 
     /**
      * @param root    the parsed root node (children are content-root-relative top-level entries).
-     * @param present whether an actual {@code .thetree.yaml} was read to produce this config.
+     * @param present whether an actual {@code thetree.yaml} was read to produce this config.
      */
     public TheTreeConfig(NodeConfig root, boolean present) {
         this.root = root;
@@ -34,7 +34,7 @@ public final class TheTreeConfig {
         return root;
     }
 
-    /** Whether an actual {@code .thetree.yaml} file backs this config. */
+    /** Whether an actual {@code thetree.yaml} file backs this config. */
     public boolean isPresent() {
         return present;
     }

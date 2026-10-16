@@ -24,7 +24,7 @@ import java.util.*;
  *
  * <ol>
  *   <li><b>Compaction</b> of source roots and folders declared {@code /compacted: true} in
- *       {@code .thetree.yaml} into single "src/main/java"-style nodes, hoisted to the module's
+ *       {@code thetree.yaml} into single "src/main/java"-style nodes, hoisted to the module's
  *       top level; branches that existed only to hold such a root collapse away.</li>
  *   <li><b>Ordering</b> by per-node {@code /weight} (0 by default; lower renders higher).</li>
  *   <li><b>Hiding</b> of nodes marked {@code /hidden: true}.</li>

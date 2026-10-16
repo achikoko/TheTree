@@ -26,7 +26,7 @@ public final class CompactedFolderNode extends PsiDirectoryNode {
         this.root = root;
     }
 
-    /** Applies a {@code /weight} from {@code .thetree.yaml}; unset means "keep the IDE's order". */
+    /** Applies a {@code /weight} from {@code thetree.yaml}; unset means "keep the IDE's order". */
     public void setWeight(int weight) {
         this.weight = weight;
     }
@@ -44,7 +44,7 @@ public final class CompactedFolderNode extends PsiDirectoryNode {
         }
         // This makes the compaction relative to project file. (An issue if it is multimodule)
 //        VirtualFile base = ProjectUtil.guessProjectDir(getProject());
-        // This makes the compaction relative to the .thetree.yaml file.
+        // This makes the compaction relative to the thetree.yaml file.
         VirtualFile base = ProjectFileIndex.getInstance(getProject()).getContentRootForFile(file);
         if (base == null && root != null) {
             base = root.getVirtualFile(); // fallback to the invoking content root

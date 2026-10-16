@@ -13,18 +13,19 @@ extended with a per-module configuration file, arbitrary ordering, and hiding �
 
 - **Compacts source folders.** A source root such as `src/main/java` shows as one node
   labelled with its relative path, instead of a deep chain of single-child folders.
-- **Compacts declared folders.** Non-source folders you list in `.thetree.yaml` with
-  `/compacted: true` (for example `src/main/protobuf`) are surfaced the same way, as a
+- **Compacts declared folders.** Non-source folders you list in `thetree.yaml` with
+  `/compact: true` (for example `src/main/protobuf`) are surfaced the same way, as a
   single top-level node.
-- **Orders arbitrarily by weight.** Every node has a `/weight`. Lower weights render **above** higher
+- **Orders arbitrarily.** Every node has an `/order` weight. Lower weights render **above** higher
   ones, and the order crosses the folder/file divide whether *Folders Always on Top* is on or off.
-- **Hides nodes.** `/hidden: true` removes a node from the tree.
+- **Hides nodes.** `/hide: true` removes a node from the tree.
+- **Renames nodes.** `/rename` shows a node under another label, optionally styled.
 - **Optionally shows module libraries.** A virtual **Libraries** node per module can be
   switched on. (Toggle: *Show Module Libraries*, off by default.)
 
 All behavior is toggleable from the Project view's *Appearance* / options menu
 (the same gear/⚙ menu that hosts "Compact Directories"):
-*Compact Source Folders*, *Use .thetree.yaml*, *Show Module Libraries*.
+*Compact Source Folders*, *Use thetree.yaml*, *Show Module Libraries*.
 
 ## Cross-IDE compatibility
 
@@ -35,7 +36,7 @@ platform. That is what lets it load in **IntelliJ IDEA, PyCharm, PhpStorm**, and
 IntelliJ-based IDEs from the same build artifact.
 
 SnakeYAML is bundled with the plugin (see `build.gradle`) rather than relying on any
-IDE-bundled YAML support, so `.thetree.yaml` parsing works identically everywhere.
+IDE-bundled YAML support, so `thetree.yaml` parsing works identically everywhere.
 
 ## Building
 
@@ -88,7 +89,7 @@ anything — that is a Gradle-vs-JVM mismatch, not a problem with the plugin cod
 4. Click **Restart IDE** when prompted. The plugin only takes effect after the restart.
 5. Check it landed: **Settings → Plugins → Installed** should list **The Tree**, and the
    Project tool window's **⚙ → Appearance** menu should now offer *Compact Source Folders*,
-   *Use .thetree.yaml* and *Show Module Libraries*.
+   *Use thetree.yaml* and *Show Module Libraries*.
 
 The same zip installs in any IntelliJ-platform IDE (IDEA, PyCharm, PhpStorm, WebStorm, GoLand,
 CLion, RubyMine, Rider) on build **222** (2022.2) or newer.
@@ -106,9 +107,12 @@ untouched:
 ./gradlew runIde
 ```
 
-## `.thetree.yaml`
+## `thetree.yaml`
 
 Place the file in a **module content root**. Its structure mirrors the folder tree.
+
+The 0.1 name `.thetree.yaml` is still read, but is discouraged: rename it to `thetree.yaml`. If
+both files exist in the same folder, `thetree.yaml` wins and the dotted one is ignored.
 
 - A key that begins with `/` sets a **property** of the current node.
 - Any other key names a **child** folder or file, and may be a
@@ -119,18 +123,22 @@ Place the file in a **module content root**. Its structure mirrors the folder tr
   merge recursively. This holds even for the very same key repeated, so you can split a
   node's settings into blocks and comment one out without touching the others:
   ```yaml
-  src/main: { /compacted: true }
-  # src/main: { /hidden: true }
+  src/main: { /compact: true }
+  # src/main: { /hide: true }
   ```
 - `.` segments are ignored: `./src/main` is the same as `src/main`.
 
 ### Properties
 
-| Property     | Type      | Default       | Meaning                                                                 |
-|--------------|-----------|---------------|-------------------------------------------------------------------------|
-| `/compacted` | boolean   | `false`       | Surface this folder at the top level as a single compacted node.        |
-| `/weight`    | integer   | `20` / `30`   | Ordering key. **Lower renders above higher**; crosses the folder/file divide. Unset means the IDE default: `20` for folders, `30` for files. |
-| `/hidden`    | boolean   | `false`       | Do not display this node.                                               |
+| Property   | Type            | Default     | Meaning                                                                 |
+|------------|-----------------|-------------|-------------------------------------------------------------------------|
+| `/compact` | boolean         | `false`     | Surface this folder at the top level as a single compacted node.        |
+| `/order`   | integer         | `20` / `30` | Ordering key. **Lower renders above higher**; crosses the folder/file divide. Unset means the IDE default: `20` for folders, `30` for files. |
+| `/hide`    | boolean         | `false`     | Do not display this node (nor anything below it).                      |
+| `/rename`  | string \| list  | —           | Show the node under another label. See [Renaming](#renaming).           |
+
+The 0.1 names `/compacted`, `/weight` and `/hidden` still work as aliases of `/compact`,
+`/order` and `/hide`, but are discouraged: prefer the action names in new files.
 
 Unknown `/`-properties are ignored, so the format is forward-compatible.
 
@@ -139,36 +147,58 @@ Unknown `/`-properties are ignored, so the format is forward-compatible.
 ```yaml
 # Treat a non-source folder as a compacted top-level node, pulled to the top.
 src/main/protobuf:
-  /compacted: true
-  /weight: -10
+  /compact: true
+  /order: -10
 
 # Another declared compacted folder, pushed below default-weight nodes.
 generated:
-  /compacted: true
-  /weight: 20
+  /compact: true
+  /order: 20
 
 # Hide a folder entirely.
 build:
-  /hidden: true
+  /hide: true
 
 # Order individual files.
 README.md:
-  /weight: -100
+  /order: -100
 CHANGELOG.md:
-  /weight: -99
+  /order: -99
 
 # Deep nesting (weight applies to docs/internal only when that branch is shown).
 docs:
-  /weight: 5
+  /order: 5
   internal:
-    /hidden: true
+    /hide: true
 
 # Patterns. Quote anything starting with '*' — YAML would otherwise choke on it.
 '*.iml':
-  /hidden: true
+  /hide: true
 '**/*.log':
-  /hidden: true
+  /hide: true
 ```
+
+### Renaming
+
+`/rename` replaces the label shown for a node; the file itself is untouched. A plain string
+shows as regular text. For styling, give a list whose items are either strings (regular text)
+or `{attrs, text}` objects; the pieces are shown one after another:
+
+```yaml
+README.md: { /rename: "Read me first" }
+src/main/protobuf:
+  /rename: [ { attrs: RB, text: proto }, { attrs: GI, text: " (generated)" } ]
+```
+
+| `attrs` | Style         | `attrs` | Style          |
+|---------|---------------|---------|----------------|
+| `R`     | regular       | `G`     | grayed         |
+| `RB`    | regular bold  | `GB`    | grayed bold    |
+| `RI`    | regular italic| `GI`    | grayed italic  |
+| `E`     | error (red)   | `GSM`   | grayed, small  |
+
+An unknown or missing `attrs` falls back to `R`. When a module folder is described by several
+`thetree.yaml` files (its own and an enclosing one), the nearest one that renames it wins.
 
 The file is re-read automatically when you save it; the project view refreshes.
 
@@ -176,13 +206,13 @@ The file is re-read automatically when you save it; the project view refreshes.
 
 Ordering behaves the same whether **"Folders Always on Top"** is on or off. The plugin overrides
 `getTypeSortWeight()` — the hook the IDE uses when that option is on — to return the same value as
-`getWeight()`: the configured `/weight` when one is declared, and the platform's own default
+`getWeight()`: the configured `/order` when one is declared, and the platform's own default
 otherwise. Both sort modes therefore read one single scale.
 
 That default scale is the IDE's: **`20` for folders, `30` for files**. So without any configuration
 folders still come first, and you position a node relative to them by picking a weight:
 
-| `/weight` | Where the node lands             |
+| `/order` | Where the node lands             |
 |-----------|----------------------------------|
 | `< 20`    | above every folder               |
 | `20`–`30` | between the folders and the files|
@@ -221,11 +251,11 @@ targeted literal re-enable something a broad pattern hid:
 
 ```yaml
 '*gradle*':          # hides gradle/, gradlew, gradlew.bat, gradle.properties, build.gradle …
-  /hidden: true
+  /hide: true
 'gradle.properties': # … except these two, which the literal match rescues
-  /hidden: false
+  /hide: false
 'build.gradle':
-  /hidden: false
+  /hide: false
 ```
 
 ### YAML quoting
@@ -257,7 +287,7 @@ src/main/java/io/github/achikoko/thetree/
   nodes/
     Ordering.java                   weight math for the virtual nodes
     CompactedFolderNode.java        compacted folder (relative-path label)
-    CompactedFolderDecorator.java   relabels roots the platform builds itself
+    TheTreeNodeDecorator.java       relabels compacted roots, applies /rename
     OrderedDirectoryNode.java       weight-carrying directory wrapper
     OrderedFileNode.java            weight-carrying file wrapper
     UnorderedDirectoryNode.java     directory wrapper that overrides `getTypeSortWeight`
@@ -270,7 +300,7 @@ src/main/java/io/github/achikoko/thetree/
     TheTreeProjectViewPane.java     pane owning its own sort comparator
     TheTreeNodeComparator.java      weight-first comparator
 src/main/resources/META-INF/plugin.xml
-.thetree.yaml                       example config (this repo's own)
+thetree.yaml                       example config (this repo's own)
 ```
 
 ## Experimental: the "The Tree" pane

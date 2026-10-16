@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * One node of the tree described by {@code .thetree.yaml}. A node carries optional properties
- * ({@code /compacted}, {@code /weight}, {@code /hidden}) and a set of named children.
+ * One node of the tree described by {@code thetree.yaml}. A node carries optional properties
+ * ({@code /compact}, {@code /order}, {@code /hide}, {@code /rename}) and a set of named children.
  *
  * <p>Property fields are nullable so we can distinguish "unset" (inherit default) from an
  * explicit value. Later-defined values overwrite earlier ones (see {@link #setCompacted} etc.),
@@ -22,6 +22,7 @@ public final class NodeConfig {
     private Boolean compacted;
     private Integer weight;
     private Boolean hidden;
+    private List<NameFragment> rename;
 
     /** Fast path for literal keys. Insertion-ordered so output is stable across parses. */
     private final Map<String, NodeConfig> literalChildren = new LinkedHashMap<>();
@@ -59,6 +60,19 @@ public final class NodeConfig {
         if (value != null) {
             this.hidden = value;
         }
+    }
+
+    /** Sets {@code /rename}; a {@code null} value leaves any previous setting untouched. */
+    public void setRename(@Nullable List<NameFragment> value) {
+        if (value != null) {
+            this.rename = List.copyOf(value);
+        }
+    }
+
+    /** The label fragments from {@code /rename}, or null if the YAML did not set one. */
+    @Nullable
+    public List<NameFragment> renameOrNull() {
+        return rename;
     }
 
     /** @return true if {@code /compacted: true} was declared on this node. */

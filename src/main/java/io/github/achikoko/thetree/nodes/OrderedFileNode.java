@@ -4,7 +4,7 @@ import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
 
 /**
  * A file node that carries a configured ordering weight, so a file can be lifted above or pushed
- * below folders per its {@code /weight} in {@code .thetree.yaml}. Lower weight renders higher.
+ * below folders per its {@code /weight} in {@code thetree.yaml}. Lower weight renders higher.
  */
 public final class OrderedFileNode extends PsiFileNode {
 

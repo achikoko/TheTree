@@ -6,7 +6,7 @@ import com.intellij.ide.projectView.impl.nodes.PsiFileNode;
  * A file node with no configured weight, re-based onto the same scale as the weighted nodes.
  *
  * <p>The platform's own {@code getTypeSortWeight} returns a folders-first grouping value that would
- * dominate any {@code /weight} from {@code .thetree.yaml}. Returning {@code getWeight()} instead
+ * dominate any {@code /weight} from {@code thetree.yaml}. Returning {@code getWeight()} instead
  * puts unconfigured nodes on the very scale the configured ones use, so a negative weight really
  * does lift a file above the folders — whatever "Folders Always on Top" is set to.
  */
