@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'io.github.achikoko.thetree'
-version '0.2.0'
+version '0.2.1'
 
 repositories {
     mavenCentral()
@@ -43,6 +43,8 @@ intellij {
 patchPluginXml {
     sinceBuild = '222'
     changeNotes = """
+    0.2.1:<br/>
+      - Fixed actions on nodes inside nested folders: keys are resolved by the full path from the content root.<br/>
     0.2.0:<br/>
       - Properties renamed to actions: /compact, /order and /hide. The old /compacted, /weight and /hidden still work as aliases but are discouraged.<br/>
       - New /rename action: a plain string, or a list of strings and {attrs, text} objects to style each piece (R, RB, RI, E, G, GB, GI, GSM).<br/>

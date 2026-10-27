@@ -101,7 +101,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         }
         
         List<AbstractTreeNode<?>> result = decorate
-            ? decorateChildren(new ArrayList<>(topLevel), config, contentRoot.getPath())
+            ? decorateChildren(new ArrayList<>(topLevel), config, contentRoot.getPath(), List.of())
             : new ArrayList<>(topLevel);
         
         if (state.getShowModuleLibraries()) {
@@ -158,7 +158,7 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
         if (parentConfig == null) {
             return pruned;
         }
-        return decorateChildren(pruned, config, parentFile.getPath());
+        return decorateChildren(pruned, config, parentFile.getPath(), PathUtil.segments(relative));
     }
 
     // ---- decoration (weight + hidden) ------------------------------------
@@ -168,11 +168,14 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
      * {@code Ordered*} wrappers, unconfigured ones become {@code Unordered*} wrappers that sit on
      * the same sort scale. Nodes we cannot map to a path are passed through untouched.
      *
-     * @param contextPath absolute path the child segments are resolved against.
+     * @param contextPath  absolute path the child segments are resolved against.
+     * @param baseSegments {@code contextPath} relative to the content root; prefixed to each
+     *                     child's segments so the config is resolved from the root.
      */
     private List<AbstractTreeNode<?>> decorateChildren(List<AbstractTreeNode<?>> nodes,
                                                        TheTreeConfig parentConfig,
-                                                       String contextPath) {
+                                                       String contextPath,
+                                                       List<String> baseSegments) {
         List<AbstractTreeNode<?>> out = new ArrayList<>(nodes.size());
         for (AbstractTreeNode<?> node : nodes) {
             List<String> segments = segmentsFor(node, contextPath);
@@ -180,7 +183,9 @@ public final class TheTreeStructureProvider implements TreeStructureProvider {
                 out.add(node); // virtual/unknown node: leave as-is
                 continue;
             }
-            NodeConfig cfg = parentConfig.resolve(segments);
+            List<String> fullSegments = new ArrayList<>(baseSegments);
+            fullSegments.addAll(segments);
+            NodeConfig cfg = parentConfig.resolve(fullSegments);
             if (cfg != null && cfg.isHidden()) {
                 continue; // drop hidden node
             }

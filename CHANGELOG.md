@@ -2,6 +2,10 @@
 
 ---
 
+## [0.2.1] - 2026-10-27
+### Fix
+- Actions on nodes inside nested folders are now resolved by their full path from the content root, so `a/b/c` keys apply to `c` and root-level keys no longer leak onto nested nodes with the same name.
+
 ## [0.2.0] - 2026-10-16
 ### Feat
 - Action names `/compact`, `/order` and `/hide`; `/compacted`, `/weight` and `/hidden` remain as discouraged aliases.
